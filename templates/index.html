@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Spanish Flashcards Web</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <main class="page">
+    <section class="panel">
+      <div class="header-row">
+        <div>
+          <h1>Spanish Flashcards Web</h1>
+          <p class="muted">Version 1: category filter, flip, shuffle, and speak.</p>
+        </div>
+        <div class="pill">Cards loaded: {{ total }}</div>
+      </div>
+
+      <div class="controls">
+        <label>
+          Category
+          <select id="categorySelect">
+            <option value="All">All</option>
+            {% for category in categories %}
+              <option value="{{ category }}">{{ category }}</option>
+            {% endfor %}
+          </select>
+        </label>
+
+        <label>
+          Prompt side
+          <select id="promptSideSelect">
+            <option value="english">English → Spanish</option>
+            <option value="spanish">Spanish → English</option>
+          </select>
+        </label>
+      </div>
+
+      <section class="card-shell">
+        <div class="card-meta">
+          <span id="categoryBadge" class="badge">-</span>
+          <span id="progressText">0 / 0</span>
+        </div>
+        <div id="cardText" class="card-text">Loading cards...</div>
+      </section>
+
+      <div class="button-row">
+        <button id="prevBtn" type="button">◀ Prev</button>
+        <button id="flipBtn" type="button">Flip</button>
+        <button id="nextBtn" type="button">Next ▶</button>
+      </div>
+
+      <div class="button-row secondary">
+        <button id="speakBtn" type="button" {% if not voice_enabled %}disabled{% endif %}>🔊 Speak</button>
+        <button id="shuffleBtn" type="button">Shuffle</button>
+      </div>
+
+      {% if not voice_enabled %}
+        <p class="warning">Voice is off right now because <code>ELEVENLABS_API_KEY</code> is not configured yet.</p>
+      {% endif %}
+
+      <p id="statusText" class="muted status">Ready.</p>
+    </section>
+  </main>
+
+  <script>
+    const initialCards = {{ cards | tojson }};
+    let cards = [...initialCards];
+    let index = 0;
+    let showingAnswer = false;
+
+    const categorySelect = document.getElementById('categorySelect');
+    const promptSideSelect = document.getElementById('promptSideSelect');
+    const cardText = document.getElementById('cardText');
+    const progressText = document.getElementById('progressText');
+    const categoryBadge = document.getElementById('categoryBadge');
+    const statusText = document.getElementById('statusText');
+    const speakBtn = document.getElementById('speakBtn');
+
+    function shuffleArray(arr) {
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+    }
+
+    function currentCard() {
+      if (!cards.length) return null;
+      return cards[index];
+    }
+
+    function renderCard() {
+      const card = currentCard();
+      if (!card) {
+        cardText.textContent = '(No cards in this category)';
+        progressText.textContent = '0 / 0';
+        categoryBadge.textContent = '-';
+        return;
+      }
+
+      const promptSide = promptSideSelect.value;
+      const answerSide = promptSide === 'english' ? 'spanish' : 'english';
+      cardText.textContent = showingAnswer ? card[answerSide] : card[promptSide];
+      progressText.textContent = `${index + 1} / ${cards.length}`;
+      categoryBadge.textContent = card.category;
+    }
+
+    async function loadCards() {
+      const category = categorySelect.value;
+      statusText.textContent = 'Loading cards...';
+      const response = await fetch(`/api/cards?category=${encodeURIComponent(category)}`);
+      const data = await response.json();
+      cards = data.cards;
+      index = 0;
+      showingAnswer = false;
+      renderCard();
+      statusText.textContent = `Loaded ${data.count} cards.`;
+    }
+
+    function nextCard() {
+      if (!cards.length) return;
+      index = (index + 1) % cards.length;
+      showingAnswer = false;
+      renderCard();
+    }
+
+    function prevCard() {
+      if (!cards.length) return;
+      index = (index - 1 + cards.length) % cards.length;
+      showingAnswer = false;
+      renderCard();
+    }
+
+    function flipCard() {
+      if (!cards.length) return;
+      showingAnswer = !showingAnswer;
+      renderCard();
+    }
+
+    function shuffleCards() {
+      shuffleArray(cards);
+      index = 0;
+      showingAnswer = false;
+      renderCard();
+      statusText.textContent = 'Shuffled current set.';
+    }
+
+    async function speakCard() {
+      const card = currentCard();
+      if (!card) return;
+      const text = card.spanish;
+      statusText.textContent = 'Generating audio...';
+      speakBtn.disabled = true;
+
+      try {
+        const response = await fetch(`/api/speak?text=${encodeURIComponent(text)}&lang=es`);
+        if (!response.ok) {
+          const err = await response.json();
+          throw new Error(err.detail || 'Voice request failed.');
+        }
+        const blob = await response.blob();
+        const audioUrl = URL.createObjectURL(blob);
+        const audio = new Audio(audioUrl);
+        audio.onended = () => {
+          URL.revokeObjectURL(audioUrl);
+          statusText.textContent = 'Playback complete.';
+          speakBtn.disabled = false;
+        };
+        audio.onerror = () => {
+          URL.revokeObjectURL(audioUrl);
+          statusText.textContent = 'Audio playback failed.';
+          speakBtn.disabled = false;
+        };
+        await audio.play();
+      } catch (error) {
+        statusText.textContent = `Voice error: ${error.message}`;
+        speakBtn.disabled = false;
+      }
+    }
+
+    document.getElementById('nextBtn').addEventListener('click', nextCard);
+    document.getElementById('prevBtn').addEventListener('click', prevCard);
+    document.getElementById('flipBtn').addEventListener('click', flipCard);
+    document.getElementById('shuffleBtn').addEventListener('click', shuffleCards);
+    if (speakBtn) speakBtn.addEventListener('click', speakCard);
+    categorySelect.addEventListener('change', loadCards);
+    promptSideSelect.addEventListener('change', () => {
+      showingAnswer = false;
+      renderCard();
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'ArrowRight') nextCard();
+      else if (event.key === 'ArrowLeft') prevCard();
+      else if (event.code === 'Space') {
+        event.preventDefault();
+        flipCard();
+      }
+    });
+
+    renderCard();
+  </script>
+</body>
+</html>
