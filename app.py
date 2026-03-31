@@ -104,12 +104,31 @@ def api_cards(category: str = Query(default="All")) -> JSONResponse:
 def speak(
     text: str = Query(..., min_length=1, max_length=300),
     lang: str = Query(default="es"),
+    speed: str = Query(default="normal"),
 ) -> StreamingResponse:
     if not ELEVENLABS_API_KEY:
         raise HTTPException(status_code=503, detail="ELEVENLABS_API_KEY is not configured.")
 
     if lang not in {"es", "en"}:
         raise HTTPException(status_code=400, detail="Unsupported language.")
+
+    if speed not in {"normal", "slow"}:
+        raise HTTPException(status_code=400, detail="Unsupported speed mode.")
+
+    if speed == "slow":
+        voice_settings = {
+            "stability": 0.75,
+            "similarity_boost": 0.8,
+            "style": 0.0,
+            "use_speaker_boost": True,
+        }
+    else:
+        voice_settings = {
+            "stability": 0.45,
+            "similarity_boost": 0.8,
+            "style": 0.0,
+            "use_speaker_boost": True,
+        }
 
     url = f"https://api.elevenlabs.io/v1/text-to-speech/{ELEVENLABS_VOICE_ID}"
     headers = {
@@ -120,10 +139,7 @@ def speak(
     payload = {
         "text": text,
         "model_id": ELEVENLABS_MODEL_ID,
-        "voice_settings": {
-            "stability": 0.45,
-            "similarity_boost": 0.8,
-        },
+        "voice_settings": voice_settings,
     }
 
     try:
