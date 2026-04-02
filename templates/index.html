@@ -299,7 +299,14 @@
       renderCard();
     });
 
+    // ✅ FIXED KEYBOARD HANDLER
     document.addEventListener('keydown', (event) => {
+      const activeTag = document.activeElement?.tagName;
+
+      if (activeTag === 'INPUT' || activeTag === 'TEXTAREA' || activeTag === 'SELECT') {
+        return;
+      }
+
       if (event.key === 'ArrowRight') nextCard();
       else if (event.key === 'ArrowLeft') prevCard();
       else if (event.code === 'Space') {
