@@ -12,10 +12,35 @@
       <div class="header-row">
         <div>
           <h1>Spanish Flashcards Web</h1>
-          <p class="muted">Version 1: category filter, flip, shuffle, speak, and slow mode.</p>
+          <p class="muted">Version 1: category filter, flip, shuffle, speak, slow mode, and live translate + speak.</p>
         </div>
         <div class="pill">Cards loaded: {{ total }}</div>
       </div>
+
+      <section class="card-shell" style="margin-bottom: 18px;">
+        <div class="card-meta">
+          <span class="badge">Live English → Spanish</span>
+        </div>
+
+        <label for="liveEnglishInput" class="muted" style="display:block; margin-bottom:8px;">
+          Type English:
+        </label>
+        <textarea
+          id="liveEnglishInput"
+          rows="3"
+          placeholder="Type something in English..."
+          style="width:100%; padding:12px; border-radius:12px; margin-bottom:12px;"
+        ></textarea>
+
+        <div class="button-row secondary">
+          <button id="translateSpeakBtn" type="button">Translate + Speak</button>
+        </div>
+
+        <div style="margin-top:14px;">
+          <p class="muted" style="margin-bottom:6px;"><strong>Spanish result:</strong></p>
+          <div id="liveSpanishOutput" class="card-text" style="min-height:60px;">Your Spanish translation will appear here.</div>
+        </div>
+      </section>
 
       <div class="controls">
         <label>
@@ -87,6 +112,10 @@
     const statusText = document.getElementById('statusText');
     const speakBtn = document.getElementById('speakBtn');
 
+    const liveEnglishInput = document.getElementById('liveEnglishInput');
+    const liveSpanishOutput = document.getElementById('liveSpanishOutput');
+    const translateSpeakBtn = document.getElementById('translateSpeakBtn');
+
     function shuffleArray(arr) {
       for (let i = arr.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -155,6 +184,39 @@
       statusText.textContent = 'Shuffled current set.';
     }
 
+    async function playAudioFromText(text, speed) {
+      const response = await fetch(
+        `/api/speak?text=${encodeURIComponent(text)}&lang=es&speed=${encodeURIComponent(speed)}`
+      );
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.detail || 'Voice request failed.');
+      }
+
+      const blob = await response.blob();
+      const audioUrl = URL.createObjectURL(blob);
+      const audio = new Audio(audioUrl);
+
+      return new Promise(async (resolve, reject) => {
+        audio.onended = () => {
+          URL.revokeObjectURL(audioUrl);
+          resolve();
+        };
+
+        audio.onerror = () => {
+          URL.revokeObjectURL(audioUrl);
+          reject(new Error('Audio playback failed.'));
+        };
+
+        try {
+          await audio.play();
+        } catch (error) {
+          reject(error);
+        }
+      });
+    }
+
     async function speakCard() {
       const card = currentCard();
       if (!card) return;
@@ -169,35 +231,52 @@
       speakBtn.disabled = true;
 
       try {
-        const response = await fetch(
-          `/api/speak?text=${encodeURIComponent(text)}&lang=es&speed=${encodeURIComponent(speed)}`
-        );
-
-        if (!response.ok) {
-          const err = await response.json();
-          throw new Error(err.detail || 'Voice request failed.');
-        }
-
-        const blob = await response.blob();
-        const audioUrl = URL.createObjectURL(blob);
-        const audio = new Audio(audioUrl);
-
-        audio.onended = () => {
-          URL.revokeObjectURL(audioUrl);
-          statusText.textContent = 'Playback complete.';
-          speakBtn.disabled = false;
-        };
-
-        audio.onerror = () => {
-          URL.revokeObjectURL(audioUrl);
-          statusText.textContent = 'Audio playback failed.';
-          speakBtn.disabled = false;
-        };
-
-        await audio.play();
+        await playAudioFromText(text, speed);
+        statusText.textContent = 'Playback complete.';
       } catch (error) {
         statusText.textContent = `Voice error: ${error.message}`;
+      } finally {
         speakBtn.disabled = false;
+      }
+    }
+
+    async function translateAndSpeakLive() {
+      const englishText = liveEnglishInput.value.trim();
+      const speed = speedSelect.value;
+
+      if (!englishText) {
+        statusText.textContent = 'Type some English text first.';
+        return;
+      }
+
+      translateSpeakBtn.disabled = true;
+      liveSpanishOutput.textContent = 'Translating...';
+      statusText.textContent = 'Translating English to Spanish...';
+
+      try {
+        const translateResponse = await fetch(
+          `/api/translate?text=${encodeURIComponent(englishText)}`
+        );
+
+        if (!translateResponse.ok) {
+          const err = await translateResponse.json();
+          throw new Error(err.detail || 'Translation failed.');
+        }
+
+        const data = await translateResponse.json();
+        liveSpanishOutput.textContent = data.spanish;
+
+        statusText.textContent = speed === 'slow'
+          ? 'Translation ready. Generating slow audio...'
+          : 'Translation ready. Generating audio...';
+
+        await playAudioFromText(data.spanish, speed);
+        statusText.textContent = 'Playback complete.';
+      } catch (error) {
+        liveSpanishOutput.textContent = 'Translation failed.';
+        statusText.textContent = `Error: ${error.message}`;
+      } finally {
+        translateSpeakBtn.disabled = false;
       }
     }
 
@@ -208,6 +287,10 @@
 
     if (speakBtn) {
       speakBtn.addEventListener('click', speakCard);
+    }
+
+    if (translateSpeakBtn) {
+      translateSpeakBtn.addEventListener('click', translateAndSpeakLive);
     }
 
     categorySelect.addEventListener('change', loadCards);
