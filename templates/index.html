@@ -32,6 +32,17 @@
           style="width:100%; padding:12px; border-radius:12px; margin-bottom:12px;"
         ></textarea>
 
+        <label for="liveSpeedSelect" class="muted" style="display:block; margin-bottom:8px;">
+          Live voice speed:
+        </label>
+        <select
+          id="liveSpeedSelect"
+          style="width:220px; padding:10px; border-radius:12px; margin-bottom:12px;"
+        >
+          <option value="normal">Normal</option>
+          <option value="slow">Slow</option>
+        </select>
+
         <div class="button-row secondary">
           <button id="translateSpeakBtn" type="button">Translate + Speak</button>
         </div>
@@ -106,6 +117,7 @@
     const categorySelect = document.getElementById('categorySelect');
     const promptSideSelect = document.getElementById('promptSideSelect');
     const speedSelect = document.getElementById('speedSelect');
+    const liveSpeedSelect = document.getElementById('liveSpeedSelect');
     const cardText = document.getElementById('cardText');
     const progressText = document.getElementById('progressText');
     const categoryBadge = document.getElementById('categoryBadge');
@@ -242,7 +254,7 @@
 
     async function translateAndSpeakLive() {
       const englishText = liveEnglishInput.value.trim();
-      const speed = speedSelect.value;
+      const speed = liveSpeedSelect.value;
 
       if (!englishText) {
         statusText.textContent = 'Type some English text first.';
