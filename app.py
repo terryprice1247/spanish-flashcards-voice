@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import io
+import json
 import os
 import random
 from pathlib import Path
@@ -17,6 +18,7 @@ from starlette.requests import Request
 
 BASE_DIR = Path(__file__).resolve().parent
 DATA_FILE = BASE_DIR / "data" / "spanish_cards_with_categories.csv"
+SAVED_PHRASES_FILE = BASE_DIR / "data" / "saved_phrases.json"
 ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY", "")
 ELEVENLABS_VOICE_ID = os.getenv("ELEVENLABS_VOICE_ID", "EXAVITQu4vr4xnSDxMaL")
 ELEVENLABS_MODEL_ID = os.getenv("ELEVENLABS_MODEL_ID", "eleven_multilingual_v2")
@@ -66,6 +68,46 @@ def get_categories(cards: list[dict[str, str]]) -> list[str]:
     return sorted(card_categories.union(DEFAULT_CATEGORIES))
 
 
+def load_saved_phrases() -> list[dict[str, Any]]:
+    if not SAVED_PHRASES_FILE.exists():
+        return []
+
+    try:
+        with open(SAVED_PHRASES_FILE, encoding="utf-8") as f:
+            data = json.load(f)
+    except (json.JSONDecodeError, OSError):
+        return []
+
+    if not isinstance(data, list):
+        return []
+
+    cleaned: list[dict[str, Any]] = []
+    for item in data:
+        if not isinstance(item, dict):
+            continue
+
+        english = str(item.get("english", "")).strip()
+        spanish = str(item.get("spanish", "")).strip()
+        favorite = bool(item.get("favorite", False))
+
+        if english and spanish:
+            cleaned.append(
+                {
+                    "english": english,
+                    "spanish": spanish,
+                    "favorite": favorite,
+                }
+            )
+
+    return cleaned
+
+
+def save_saved_phrases(phrases: list[dict[str, Any]]) -> None:
+    SAVED_PHRASES_FILE.parent.mkdir(parents=True, exist_ok=True)
+    with open(SAVED_PHRASES_FILE, "w", encoding="utf-8") as f:
+        json.dump(phrases, f, ensure_ascii=False, indent=2)
+
+
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request) -> HTMLResponse:
     cards = load_cards()
@@ -85,9 +127,11 @@ def index(request: Request) -> HTMLResponse:
 @app.get("/health")
 def health() -> dict[str, Any]:
     cards = load_cards()
+    saved_phrases = load_saved_phrases()
     return {
         "ok": True,
         "card_count": len(cards),
+        "saved_phrase_count": len(saved_phrases),
         "voice_enabled": bool(ELEVENLABS_API_KEY),
     }
 
@@ -121,6 +165,50 @@ def translate_text(
         {
             "english": clean_text,
             "spanish": spanish,
+        }
+    )
+
+
+@app.post("/api/save-phrase")
+async def save_phrase(request: Request) -> JSONResponse:
+    try:
+        payload = await request.json()
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="Invalid JSON payload.") from exc
+
+    english = str(payload.get("english", "")).strip()
+    spanish = str(payload.get("spanish", "")).strip()
+
+    if not english or not spanish:
+        raise HTTPException(status_code=400, detail="English and Spanish are required.")
+
+    saved_phrases = load_saved_phrases()
+
+    for item in saved_phrases:
+        if item["english"] == english and item["spanish"] == spanish:
+            return JSONResponse(
+                {
+                    "ok": True,
+                    "saved": False,
+                    "message": "Phrase already saved.",
+                    "phrase": item,
+                }
+            )
+
+    new_phrase = {
+        "english": english,
+        "spanish": spanish,
+        "favorite": False,
+    }
+    saved_phrases.append(new_phrase)
+    save_saved_phrases(saved_phrases)
+
+    return JSONResponse(
+        {
+            "ok": True,
+            "saved": True,
+            "message": "Phrase saved.",
+            "phrase": new_phrase,
         }
     )
 
