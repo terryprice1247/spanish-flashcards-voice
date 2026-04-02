@@ -146,6 +146,7 @@ def speak(
             "similarity_boost": 0.8,
             "style": 0.0,
             "use_speaker_boost": True,
+            "speed": 0.7,
         }
     else:
         voice_settings = {
@@ -153,6 +154,7 @@ def speak(
             "similarity_boost": 0.8,
             "style": 0.0,
             "use_speaker_boost": True,
+            "speed": 1.0,
         }
 
     url = f"https://api.elevenlabs.io/v1/text-to-speech/{ELEVENLABS_VOICE_ID}"
