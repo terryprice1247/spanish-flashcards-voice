@@ -12,7 +12,7 @@
       <div class="header-row">
         <div>
           <h1>Spanish Flashcards Web</h1>
-          <p class="muted">Version 1: category filter, flip, shuffle, speak, slow mode, and live translate + speak.</p>
+          <p class="muted">Version 1: category filter, flip, shuffle, speak, slow mode, live translate + speak, and save phrase.</p>
         </div>
         <div class="pill">Cards loaded: {{ total }}</div>
       </div>
@@ -45,6 +45,7 @@
 
         <div class="button-row secondary">
           <button id="translateSpeakBtn" type="button">Translate + Speak</button>
+          <button id="savePhraseBtn" type="button">Save Phrase</button>
         </div>
 
         <div style="margin-top:14px;">
@@ -113,6 +114,8 @@
     let cards = [...initialCards];
     let index = 0;
     let showingAnswer = false;
+    let lastTranslatedEnglish = '';
+    let lastTranslatedSpanish = '';
 
     const categorySelect = document.getElementById('categorySelect');
     const promptSideSelect = document.getElementById('promptSideSelect');
@@ -127,6 +130,7 @@
     const liveEnglishInput = document.getElementById('liveEnglishInput');
     const liveSpanishOutput = document.getElementById('liveSpanishOutput');
     const translateSpeakBtn = document.getElementById('translateSpeakBtn');
+    const savePhraseBtn = document.getElementById('savePhraseBtn');
 
     function shuffleArray(arr) {
       for (let i = arr.length - 1; i > 0; i--) {
@@ -262,6 +266,7 @@
       }
 
       translateSpeakBtn.disabled = true;
+      savePhraseBtn.disabled = true;
       liveSpanishOutput.textContent = 'Translating...';
       statusText.textContent = 'Translating English to Spanish...';
 
@@ -277,6 +282,8 @@
 
         const data = await translateResponse.json();
         liveSpanishOutput.textContent = data.spanish;
+        lastTranslatedEnglish = data.english;
+        lastTranslatedSpanish = data.spanish;
 
         statusText.textContent = speed === 'slow'
           ? 'Translation ready. Generating slow audio...'
@@ -286,9 +293,50 @@
         statusText.textContent = 'Playback complete.';
       } catch (error) {
         liveSpanishOutput.textContent = 'Translation failed.';
+        lastTranslatedEnglish = '';
+        lastTranslatedSpanish = '';
         statusText.textContent = `Error: ${error.message}`;
       } finally {
         translateSpeakBtn.disabled = false;
+        savePhraseBtn.disabled = false;
+      }
+    }
+
+    async function savePhrase() {
+      const english = lastTranslatedEnglish || liveEnglishInput.value.trim();
+      const spanish = lastTranslatedSpanish || liveSpanishOutput.textContent.trim();
+
+      if (!english || !spanish || spanish === 'Your Spanish translation will appear here.' || spanish === 'Translating...' || spanish === 'Translation failed.') {
+        statusText.textContent = 'Translate something successfully before saving.';
+        return;
+      }
+
+      savePhraseBtn.disabled = true;
+      statusText.textContent = 'Saving phrase...';
+
+      try {
+        const response = await fetch('/api/save-phrase', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            english,
+            spanish
+          })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.detail || 'Save failed.');
+        }
+
+        statusText.textContent = data.message || 'Phrase saved.';
+      } catch (error) {
+        statusText.textContent = `Save error: ${error.message}`;
+      } finally {
+        savePhraseBtn.disabled = false;
       }
     }
 
@@ -305,13 +353,16 @@
       translateSpeakBtn.addEventListener('click', translateAndSpeakLive);
     }
 
+    if (savePhraseBtn) {
+      savePhraseBtn.addEventListener('click', savePhrase);
+    }
+
     categorySelect.addEventListener('change', loadCards);
     promptSideSelect.addEventListener('change', () => {
       showingAnswer = false;
       renderCard();
     });
 
-    // ✅ FIXED KEYBOARD HANDLER
     document.addEventListener('keydown', (event) => {
       const activeTag = document.activeElement?.tagName;
 
