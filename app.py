@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 import requests
+from deep_translator import GoogleTranslator
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -98,6 +99,30 @@ def api_cards(category: str = Query(default="All")) -> JSONResponse:
         cards = [card for card in cards if card["category"] == category]
     random.shuffle(cards)
     return JSONResponse({"cards": cards, "count": len(cards)})
+
+
+@app.get("/api/translate")
+def translate_text(
+    text: str = Query(..., min_length=1, max_length=300),
+) -> JSONResponse:
+    clean_text = text.strip()
+    if not clean_text:
+        raise HTTPException(status_code=400, detail="Text cannot be empty.")
+
+    try:
+        spanish = GoogleTranslator(source="en", target="es").translate(clean_text)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Translation failed: {exc}") from exc
+
+    if not spanish:
+        raise HTTPException(status_code=502, detail="Translation returned no text.")
+
+    return JSONResponse(
+        {
+            "english": clean_text,
+            "spanish": spanish,
+        }
+    )
 
 
 @app.get("/api/speak")
