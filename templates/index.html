@@ -48,6 +48,7 @@
           <button id="translateSpeakBtn" type="button">Translate + Speak</button>
           <button id="savePhraseBtn" type="button">Save Phrase</button>
           <button id="showSavedBtn" type="button">View Saved Phrases</button>
+          <button id="showMainBtn" type="button">Back to Flashcards</button>
         </div>
 
         <div style="margin-top:14px;">
@@ -211,6 +212,7 @@
     const translateSpeakBtn = document.getElementById('translateSpeakBtn');
     const savePhraseBtn = document.getElementById('savePhraseBtn');
     const showSavedBtn = document.getElementById('showSavedBtn');
+    const showMainBtn = document.getElementById('showMainBtn');
     const savedPhraseCountBadge = document.getElementById('savedPhraseCountBadge');
     const savedPhraseList = document.getElementById('savedPhraseList');
     const deleteSavedBtn = document.getElementById('deleteSavedBtn');
@@ -779,8 +781,14 @@
     function switchToSavedMode() {
       deckSourceSelect.value = 'saved';
       categorySelect.value = 'All';
-      refreshDeck(false);
+      handleDeckSourceChange();
       statusText.textContent = 'Viewing saved phrases.';
+    }
+
+    function switchToMainMode() {
+      deckSourceSelect.value = 'main';
+      handleDeckSourceChange();
+      statusText.textContent = 'Viewing main flashcards.';
     }
 
     function handleDeckSourceChange() {
@@ -808,6 +816,7 @@
     resetProgressBtn.addEventListener('click', resetProgress);
     savePhraseBtn.addEventListener('click', savePhraseToBrowser);
     showSavedBtn.addEventListener('click', switchToSavedMode);
+    showMainBtn.addEventListener('click', switchToMainMode);
     deleteSavedBtn.addEventListener('click', deleteCurrentSavedPhrase);
 
     if (speakBtn) {
