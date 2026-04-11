@@ -159,3 +159,52 @@ code {
 .rating-row button:nth-child(4) {
   border-color: #0c4a6e;
 }
+
+.sr-stats {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 8px;
+}
+
+.mini-badge {
+  background: #0f1b2f;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 8px 12px;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.rating-row button {
+  min-width: 100px;
+}
+
+.rating-row button:nth-child(1) {
+  border-color: #7f1d1d;
+}
+
+.rating-row button:nth-child(2) {
+  border-color: #854d0e;
+}
+
+.rating-row button:nth-child(3) {
+  border-color: #166534;
+}
+
+.rating-row button:nth-child(4) {
+  border-color: #0c4a6e;
+}
+
+.saved-list {
+  display: grid;
+  gap: 10px;
+}
+
+.saved-item {
+  background: #0b1220;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px;
+}
