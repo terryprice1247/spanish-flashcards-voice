@@ -57,6 +57,57 @@
         </div>
       </section>
 
+      <section class="card-shell" style="margin-bottom: 18px;">
+        <div class="card-meta">
+          <span class="badge">🎧 Shadow Mode</span>
+          <span class="badge" id="shadowModeStatusBadge">Listen first</span>
+        </div>
+
+        <div class="controls">
+          <label>
+            Shadow source
+            <select id="shadowSourceSelect">
+              <option value="current">Current flashcard</option>
+              <option value="saved">Saved phrases</option>
+            </select>
+          </label>
+
+          <label>
+            Shadow speed
+            <select id="shadowSpeedSelect">
+              <option value="normal">Normal</option>
+              <option value="slow">Slow</option>
+            </select>
+          </label>
+
+          <label>
+            Text display
+            <select id="shadowTextModeSelect">
+              <option value="hidden">Hide text first</option>
+              <option value="shown">Show text immediately</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="button-row secondary">
+          <button id="startShadowBtn" type="button" {% if not voice_enabled %}disabled{% endif %}>Start Shadow</button>
+          <button id="replayShadowBtn" type="button" {% if not voice_enabled %}disabled{% endif %}>Replay</button>
+          <button id="replayShadowSlowBtn" type="button" {% if not voice_enabled %}disabled{% endif %}>Replay Slower</button>
+          <button id="revealShadowBtn" type="button">Reveal Text</button>
+          <button id="nextShadowBtn" type="button">Next Shadow Item</button>
+        </div>
+
+        <div style="margin-top:14px;">
+          <p class="muted" style="margin-bottom:6px;"><strong>Shadow prompt:</strong></p>
+          <div id="shadowPromptOutput" class="card-text" style="min-height:90px;">Press Start Shadow to train by sound first.</div>
+        </div>
+
+        <div class="sr-stats">
+          <span id="shadowEnglishBadge" class="mini-badge">English: -</span>
+          <span id="shadowSpanishBadge" class="mini-badge">Spanish: hidden</span>
+        </div>
+      </section>
+
       <div class="controls">
         <label>
           Study source
@@ -186,6 +237,11 @@
     let lastTranslatedEnglish = '';
     let lastTranslatedSpanish = '';
 
+    let shadowQueue = [];
+    let shadowIndex = 0;
+    let shadowCurrentItem = null;
+    let shadowTextRevealed = false;
+
     const deckSourceSelect = document.getElementById('deckSourceSelect');
     const categorySelect = document.getElementById('categorySelect');
     const promptSideSelect = document.getElementById('promptSideSelect');
@@ -222,6 +278,19 @@
     const goodBtn = document.getElementById('goodBtn');
     const easyBtn = document.getElementById('easyBtn');
     const resetProgressBtn = document.getElementById('resetProgressBtn');
+
+    const shadowSourceSelect = document.getElementById('shadowSourceSelect');
+    const shadowSpeedSelect = document.getElementById('shadowSpeedSelect');
+    const shadowTextModeSelect = document.getElementById('shadowTextModeSelect');
+    const startShadowBtn = document.getElementById('startShadowBtn');
+    const replayShadowBtn = document.getElementById('replayShadowBtn');
+    const replayShadowSlowBtn = document.getElementById('replayShadowSlowBtn');
+    const revealShadowBtn = document.getElementById('revealShadowBtn');
+    const nextShadowBtn = document.getElementById('nextShadowBtn');
+    const shadowPromptOutput = document.getElementById('shadowPromptOutput');
+    const shadowEnglishBadge = document.getElementById('shadowEnglishBadge');
+    const shadowSpanishBadge = document.getElementById('shadowSpanishBadge');
+    const shadowModeStatusBadge = document.getElementById('shadowModeStatusBadge');
 
     function shuffleArray(arr) {
       for (let i = arr.length - 1; i > 0; i--) {
@@ -266,6 +335,19 @@
         ...card,
         source: 'main'
       }));
+    }
+
+    function getShadowSourceCards() {
+      if (shadowSourceSelect.value === 'saved') {
+        return savedPhrases.map(item => ({
+          english: item.english,
+          spanish: item.spanish,
+          category: 'Saved Phrase',
+          source: 'saved'
+        }));
+      }
+
+      return cards.length ? [...cards] : [];
     }
 
     function getCardKey(card) {
@@ -803,6 +885,133 @@
         : 'Main flashcards mode active.';
     }
 
+    function renderShadowCard() {
+      if (!shadowCurrentItem) {
+        shadowPromptOutput.textContent = 'Press Start Shadow to train by sound first.';
+        shadowEnglishBadge.textContent = 'English: -';
+        shadowSpanishBadge.textContent = 'Spanish: hidden';
+        shadowModeStatusBadge.textContent = 'Listen first';
+        return;
+      }
+
+      shadowEnglishBadge.textContent = `English: ${shadowCurrentItem.english}`;
+
+      if (shadowTextRevealed || shadowTextModeSelect.value === 'shown') {
+        shadowPromptOutput.textContent = shadowCurrentItem.spanish;
+        shadowSpanishBadge.textContent = `Spanish: ${shadowCurrentItem.spanish}`;
+        shadowModeStatusBadge.textContent = 'Text visible';
+      } else {
+        shadowPromptOutput.textContent = '🎧 Listen and repeat out loud before revealing.';
+        shadowSpanishBadge.textContent = 'Spanish: hidden';
+        shadowModeStatusBadge.textContent = 'Hidden first';
+      }
+    }
+
+    function buildShadowQueue() {
+      const sourceCards = getShadowSourceCards();
+
+      if (!sourceCards.length) {
+        shadowQueue = [];
+        shadowIndex = 0;
+        shadowCurrentItem = null;
+        shadowTextRevealed = false;
+        renderShadowCard();
+        return false;
+      }
+
+      shadowQueue = [...sourceCards];
+      shadowIndex = 0;
+      shadowCurrentItem = shadowQueue[0];
+      shadowTextRevealed = shadowTextModeSelect.value === 'shown';
+      renderShadowCard();
+      return true;
+    }
+
+    async function playShadowCurrent(speedOverride = null) {
+      if (!shadowCurrentItem) {
+        statusText.textContent = 'No shadow item is ready yet.';
+        return;
+      }
+
+      const speed = speedOverride || shadowSpeedSelect.value;
+
+      startShadowBtn.disabled = true;
+      replayShadowBtn.disabled = true;
+      replayShadowSlowBtn.disabled = true;
+
+      statusText.textContent = speed === 'slow'
+        ? 'Shadow mode: playing slower audio...'
+        : 'Shadow mode: playing audio...';
+
+      try {
+        await playAudioFromText(shadowCurrentItem.spanish, speed);
+        statusText.textContent = 'Shadow playback complete. Repeat it out loud.';
+      } catch (error) {
+        statusText.textContent = `Voice error: ${error.message}`;
+      } finally {
+        startShadowBtn.disabled = false;
+        replayShadowBtn.disabled = false;
+        replayShadowSlowBtn.disabled = false;
+      }
+    }
+
+    async function startShadowMode() {
+      const ok = buildShadowQueue();
+
+      if (!ok) {
+        statusText.textContent = shadowSourceSelect.value === 'saved'
+          ? 'No saved phrases available for shadow mode.'
+          : 'No flashcards available for shadow mode.';
+        return;
+      }
+
+      await playShadowCurrent();
+    }
+
+    async function replayShadow() {
+      if (!shadowCurrentItem) {
+        statusText.textContent = 'Start shadow mode first.';
+        return;
+      }
+      await playShadowCurrent();
+    }
+
+    async function replayShadowSlow() {
+      if (!shadowCurrentItem) {
+        statusText.textContent = 'Start shadow mode first.';
+        return;
+      }
+      await playShadowCurrent('slow');
+    }
+
+    function revealShadowText() {
+      if (!shadowCurrentItem) {
+        statusText.textContent = 'Start shadow mode first.';
+        return;
+      }
+
+      shadowTextRevealed = true;
+      renderShadowCard();
+      statusText.textContent = 'Shadow text revealed.';
+    }
+
+    async function nextShadowItem() {
+      if (!shadowQueue.length) {
+        const ok = buildShadowQueue();
+        if (!ok) {
+          statusText.textContent = 'Nothing available for shadow mode.';
+          return;
+        }
+      } else {
+        shadowIndex = (shadowIndex + 1) % shadowQueue.length;
+        shadowCurrentItem = shadowQueue[shadowIndex];
+        shadowTextRevealed = shadowTextModeSelect.value === 'shown';
+        renderShadowCard();
+      }
+
+      await playShadowCurrent();
+    }
+
     document.getElementById('nextBtn').addEventListener('click', nextCard);
     document.getElementById('prevBtn').addEventListener('click', prevCard);
     document.getElementById('flipBtn').addEventListener('click', flipCard);
@@ -818,6 +1027,29 @@
     showSavedBtn.addEventListener('click', switchToSavedMode);
     showMainBtn.addEventListener('click', switchToMainMode);
     deleteSavedBtn.addEventListener('click', deleteCurrentSavedPhrase);
+
+    startShadowBtn.addEventListener('click', startShadowMode);
+    replayShadowBtn.addEventListener('click', replayShadow);
+    replayShadowSlowBtn.addEventListener('click', replayShadowSlow);
+    revealShadowBtn.addEventListener('click', revealShadowText);
+    nextShadowBtn.addEventListener('click', nextShadowItem);
+
+    shadowSourceSelect.addEventListener('change', () => {
+      shadowQueue = [];
+      shadowCurrentItem = null;
+      shadowTextRevealed = false;
+      renderShadowCard();
+    });
+
+    shadowTextModeSelect.addEventListener('change', () => {
+      if (!shadowCurrentItem) {
+        renderShadowCard();
+        return;
+      }
+
+      shadowTextRevealed = shadowTextModeSelect.value === 'shown';
+      renderShadowCard();
+    });
 
     if (speakBtn) {
       speakBtn.addEventListener('click', speakCard);
@@ -858,12 +1090,17 @@
         rateCard('good');
       } else if (event.key === '4') {
         rateCard('easy');
+      } else if (event.key.toLowerCase() === 's') {
+        replayShadow();
+      } else if (event.key.toLowerCase() === 'r') {
+        revealShadowText();
       }
     });
 
     updateSavedPhraseCountUI();
     renderSavedPhraseList();
     handleDeckSourceChange();
+    renderShadowCard();
   </script>
 </body>
 </html>
