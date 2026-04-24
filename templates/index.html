@@ -12,208 +12,235 @@
       <div class="header-row">
         <div>
           <h1>Spanish Flashcards Web</h1>
-          <p class="muted">Version 3: spaced repetition, saved phrases mode, due cards, weak cards, mastery tracking, live translate + speak.</p>
+          <p class="muted">Spaced repetition, saved phrases, live translate, and shadow listening practice.</p>
         </div>
         <div class="pill" id="cardsLoadedPill">Cards loaded: {{ total }}</div>
       </div>
 
-      <section class="card-shell" style="margin-bottom: 18px;">
-        <div class="card-meta">
-          <span class="badge">Live English → Spanish</span>
-          <span class="badge" id="savedPhraseCountBadge">Saved phrases: 0</span>
-        </div>
+      <div class="mode-tabs">
+        <button class="tab-btn active" type="button" data-tab="flashcardsPanel">Flashcards</button>
+        <button class="tab-btn" type="button" data-tab="liveTranslatePanel">Live Translate</button>
+        <button class="tab-btn" type="button" data-tab="shadowPanel">Shadow Mode</button>
+        <button class="tab-btn" type="button" data-tab="savedPanel">Saved Phrases</button>
+      </div>
 
-        <label for="liveEnglishInput" class="muted" style="display:block; margin-bottom:8px;">
-          Type English:
-        </label>
-        <textarea
-          id="liveEnglishInput"
-          rows="3"
-          placeholder="Type something in English..."
-          style="width:100%; padding:12px; border-radius:12px; margin-bottom:12px;"
-        ></textarea>
-
-        <label for="liveSpeedSelect" class="muted" style="display:block; margin-bottom:8px;">
-          Live voice speed:
-        </label>
-        <select
-          id="liveSpeedSelect"
-          style="width:220px; padding:10px; border-radius:12px; margin-bottom:12px;"
-        >
-          <option value="normal">Normal</option>
-          <option value="slow">Slow</option>
-        </select>
-
-        <div class="button-row secondary">
-          <button id="translateSpeakBtn" type="button">Translate + Speak</button>
-          <button id="savePhraseBtn" type="button">Save Phrase</button>
-          <button id="showSavedBtn" type="button">View Saved Phrases</button>
-          <button id="showMainBtn" type="button">Back to Flashcards</button>
-        </div>
-
-        <div style="margin-top:14px;">
-          <p class="muted" style="margin-bottom:6px;"><strong>Spanish result:</strong></p>
-          <div id="liveSpanishOutput" class="card-text" style="min-height:60px;">Your Spanish translation will appear here.</div>
-        </div>
-      </section>
-
-      <section class="card-shell" style="margin-bottom: 18px;">
-        <div class="card-meta">
-          <span class="badge">🎧 Shadow Mode</span>
-          <span class="badge" id="shadowModeStatusBadge">Listen first</span>
-        </div>
+      <section id="flashcardsPanel" class="tab-panel active">
+        <h2 class="section-heading">Flashcard Training</h2>
+        <p class="section-subtitle">Drill your main deck or saved phrases with spaced repetition.</p>
 
         <div class="controls">
           <label>
-            Shadow source
-            <select id="shadowSourceSelect">
-              <option value="current">Current flashcard</option>
+            Study source
+            <select id="deckSourceSelect">
+              <option value="main">Main flashcards</option>
               <option value="saved">Saved phrases</option>
             </select>
           </label>
 
           <label>
-            Shadow speed
-            <select id="shadowSpeedSelect">
+            Category
+            <select id="categorySelect">
+              <option value="All">All</option>
+              {% for category in categories %}
+                <option value="{{ category }}">{{ category }}</option>
+              {% endfor %}
+            </select>
+          </label>
+
+          <label>
+            Prompt side
+            <select id="promptSideSelect">
+              <option value="english">English → Spanish</option>
+              <option value="spanish">Spanish → English</option>
+            </select>
+          </label>
+
+          <label>
+            Speed
+            <select id="speedSelect">
               <option value="normal">Normal</option>
               <option value="slow">Slow</option>
             </select>
           </label>
 
           <label>
-            Text display
-            <select id="shadowTextModeSelect">
-              <option value="hidden">Hide text first</option>
-              <option value="shown">Show text immediately</option>
+            Study mode
+            <select id="studyModeSelect">
+              <option value="all">All cards</option>
+              <option value="due">Due cards only</option>
+              <option value="weak">Needs work only</option>
+              <option value="new">New cards only</option>
+            </select>
+          </label>
+
+          <label>
+            Mastered cards
+            <select id="masteredModeSelect">
+              <option value="hide">Hide mastered</option>
+              <option value="show">Show mastered</option>
+            </select>
+          </label>
+
+          <label>
+            Sort order
+            <select id="sortModeSelect">
+              <option value="smart">Smart priority</option>
+              <option value="random">Random</option>
+              <option value="original">Original order</option>
             </select>
           </label>
         </div>
 
+        <section class="card-shell flashcard-stage">
+          <div class="card-meta">
+            <span id="categoryBadge" class="badge">-</span>
+            <span id="progressText">0 / 0</span>
+          </div>
+
+          <div id="cardText" class="card-text">Loading cards...</div>
+
+          <div class="sr-stats">
+            <span id="dueBadge" class="mini-badge">Due: 0</span>
+            <span id="strengthBadge" class="mini-badge">Strength: New</span>
+            <span id="streakBadge" class="mini-badge">Streak: 0</span>
+            <span id="mistakeBadge" class="mini-badge">Misses: 0</span>
+          </div>
+        </section>
+
+        <div class="button-row">
+          <button id="prevBtn" type="button">◀ Prev</button>
+          <button id="flipBtn" type="button">Flip</button>
+          <button id="nextBtn" type="button">Next ▶</button>
+        </div>
+
         <div class="button-row secondary">
-          <button id="startShadowBtn" type="button" {% if not voice_enabled %}disabled{% endif %}>Start Shadow</button>
-          <button id="replayShadowBtn" type="button" {% if not voice_enabled %}disabled{% endif %}>Replay</button>
-          <button id="replayShadowSlowBtn" type="button" {% if not voice_enabled %}disabled{% endif %}>Replay Slower</button>
-          <button id="revealShadowBtn" type="button">Reveal Text</button>
-          <button id="nextShadowBtn" type="button">Next Shadow Item</button>
+          <button id="speakBtn" type="button" {% if not voice_enabled %}disabled{% endif %}>🔊 Speak</button>
+          <button id="shuffleBtn" type="button">Shuffle</button>
+          <button id="resetProgressBtn" type="button">Reset Progress</button>
+          <button id="deleteSavedBtn" type="button">Delete Current Saved Phrase</button>
         </div>
 
-        <div style="margin-top:14px;">
-          <p class="muted" style="margin-bottom:6px;"><strong>Shadow prompt:</strong></p>
-          <div id="shadowPromptOutput" class="card-text" style="min-height:90px;">Press Start Shadow to train by sound first.</div>
-        </div>
-
-        <div class="sr-stats">
-          <span id="shadowEnglishBadge" class="mini-badge">English: -</span>
-          <span id="shadowSpanishBadge" class="mini-badge">Spanish: hidden</span>
+        <div class="button-row rating-row">
+          <button id="againBtn" type="button">Again</button>
+          <button id="hardBtn" type="button">Hard</button>
+          <button id="goodBtn" type="button">Good</button>
+          <button id="easyBtn" type="button">Easy</button>
         </div>
       </section>
 
-      <div class="controls">
-        <label>
-          Study source
-          <select id="deckSourceSelect">
-            <option value="main">Main flashcards</option>
-            <option value="saved">Saved phrases</option>
-          </select>
-        </label>
+      <section id="liveTranslatePanel" class="tab-panel">
+        <h2 class="section-heading">Live Translate</h2>
+        <p class="section-subtitle">Type an English phrase, translate it, hear it spoken, then save it for later.</p>
 
-        <label>
-          Category
-          <select id="categorySelect">
-            <option value="All">All</option>
-            {% for category in categories %}
-              <option value="{{ category }}">{{ category }}</option>
-            {% endfor %}
-          </select>
-        </label>
+        <section class="card-shell">
+          <div class="card-meta">
+            <span class="badge">Live English → Spanish</span>
+            <span class="badge" id="savedPhraseCountBadge">Saved phrases: 0</span>
+          </div>
 
-        <label>
-          Prompt side
-          <select id="promptSideSelect">
-            <option value="english">English → Spanish</option>
-            <option value="spanish">Spanish → English</option>
-          </select>
-        </label>
+          <label for="liveEnglishInput" class="muted" style="display:block; margin-bottom:8px;">
+            Type English:
+          </label>
 
-        <label>
-          Speed
-          <select id="speedSelect">
+          <textarea
+            id="liveEnglishInput"
+            rows="3"
+            placeholder="Type something in English..."
+            style="width:100%; padding:12px; border-radius:12px; margin-bottom:12px;"
+          ></textarea>
+
+          <label for="liveSpeedSelect" class="muted" style="display:block; margin-bottom:8px;">
+            Live voice speed:
+          </label>
+
+          <select
+            id="liveSpeedSelect"
+            style="width:220px; padding:10px; border-radius:12px; margin-bottom:12px;"
+          >
             <option value="normal">Normal</option>
             <option value="slow">Slow</option>
           </select>
-        </label>
-      </div>
 
-      <div class="controls">
-        <label>
-          Study mode
-          <select id="studyModeSelect">
-            <option value="all">All cards</option>
-            <option value="due">Due cards only</option>
-            <option value="weak">Needs work only</option>
-            <option value="new">New cards only</option>
-          </select>
-        </label>
+          <div class="button-row secondary">
+            <button id="translateSpeakBtn" type="button">Translate + Speak</button>
+            <button id="savePhraseBtn" type="button">Save Phrase</button>
+            <button id="showSavedBtn" type="button">View Saved Phrases</button>
+            <button id="showMainBtn" type="button">Back to Flashcards</button>
+          </div>
 
-        <label>
-          Mastered cards
-          <select id="masteredModeSelect">
-            <option value="hide">Hide mastered</option>
-            <option value="show">Show mastered</option>
-          </select>
-        </label>
-
-        <label>
-          Sort order
-          <select id="sortModeSelect">
-            <option value="smart">Smart priority</option>
-            <option value="random">Random</option>
-            <option value="original">Original order</option>
-          </select>
-        </label>
-      </div>
-
-      <section class="card-shell">
-        <div class="card-meta">
-          <span id="categoryBadge" class="badge">-</span>
-          <span id="progressText">0 / 0</span>
-        </div>
-
-        <div id="cardText" class="card-text">Loading cards...</div>
-
-        <div class="sr-stats">
-          <span id="dueBadge" class="mini-badge">Due: 0</span>
-          <span id="strengthBadge" class="mini-badge">Strength: New</span>
-          <span id="streakBadge" class="mini-badge">Streak: 0</span>
-          <span id="mistakeBadge" class="mini-badge">Misses: 0</span>
-        </div>
+          <div style="margin-top:14px;">
+            <p class="muted" style="margin-bottom:6px;"><strong>Spanish result:</strong></p>
+            <div id="liveSpanishOutput" class="card-text" style="min-height:60px;">Your Spanish translation will appear here.</div>
+          </div>
+        </section>
       </section>
 
-      <div class="button-row">
-        <button id="prevBtn" type="button">◀ Prev</button>
-        <button id="flipBtn" type="button">Flip</button>
-        <button id="nextBtn" type="button">Next ▶</button>
-      </div>
+      <section id="shadowPanel" class="tab-panel">
+        <h2 class="section-heading">Shadow Mode</h2>
+        <p class="section-subtitle">Listen first, repeat out loud, then reveal the Spanish text.</p>
 
-      <div class="button-row secondary">
-        <button id="speakBtn" type="button" {% if not voice_enabled %}disabled{% endif %}>🔊 Speak</button>
-        <button id="shuffleBtn" type="button">Shuffle</button>
-        <button id="resetProgressBtn" type="button">Reset Progress</button>
-        <button id="deleteSavedBtn" type="button">Delete Current Saved Phrase</button>
-      </div>
+        <section class="card-shell">
+          <div class="card-meta">
+            <span class="badge">🎧 Shadow Mode</span>
+            <span class="badge" id="shadowModeStatusBadge">Listen first</span>
+          </div>
 
-      <div class="button-row rating-row">
-        <button id="againBtn" type="button">Again</button>
-        <button id="hardBtn" type="button">Hard</button>
-        <button id="goodBtn" type="button">Good</button>
-        <button id="easyBtn" type="button">Easy</button>
-      </div>
+          <div class="controls">
+            <label>
+              Shadow source
+              <select id="shadowSourceSelect">
+                <option value="current">Current flashcard</option>
+                <option value="saved">Saved phrases</option>
+              </select>
+            </label>
 
-      <section class="card-shell" style="margin-top: 18px;">
-        <div class="card-meta">
-          <span class="badge">Saved Phrases List</span>
-        </div>
-        <div id="savedPhraseList" class="saved-list muted">No saved phrases yet.</div>
+            <label>
+              Shadow speed
+              <select id="shadowSpeedSelect">
+                <option value="normal">Normal</option>
+                <option value="slow">Slow</option>
+              </select>
+            </label>
+
+            <label>
+              Text display
+              <select id="shadowTextModeSelect">
+                <option value="hidden">Hide text first</option>
+                <option value="shown">Show text immediately</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="button-row secondary">
+            <button id="startShadowBtn" type="button" {% if not voice_enabled %}disabled{% endif %}>Start Shadow</button>
+            <button id="replayShadowBtn" type="button" {% if not voice_enabled %}disabled{% endif %}>Replay</button>
+            <button id="replayShadowSlowBtn" type="button" {% if not voice_enabled %}disabled{% endif %}>Replay Slower</button>
+            <button id="revealShadowBtn" type="button">Reveal Text</button>
+            <button id="nextShadowBtn" type="button">Next Shadow Item</button>
+          </div>
+
+          <div style="margin-top:14px;">
+            <p class="muted" style="margin-bottom:6px;"><strong>Shadow prompt:</strong></p>
+            <div id="shadowPromptOutput" class="card-text" style="min-height:90px;">Press Start Shadow to train by sound first.</div>
+          </div>
+
+          <div class="sr-stats">
+            <span id="shadowEnglishBadge" class="mini-badge">English: -</span>
+            <span id="shadowSpanishBadge" class="mini-badge">Spanish: hidden</span>
+          </div>
+        </section>
+      </section>
+
+      <section id="savedPanel" class="tab-panel">
+        <h2 class="section-heading">Saved Phrases</h2>
+        <p class="section-subtitle">Your custom saved phrases from Live Translate.</p>
+
+        <section class="card-shell">
+          <div class="card-meta">
+            <span class="badge">Saved Phrases List</span>
+          </div>
+          <div id="savedPhraseList" class="saved-list muted">No saved phrases yet.</div>
+        </section>
       </section>
 
       {% if not voice_enabled %}
@@ -291,6 +318,25 @@
     const shadowEnglishBadge = document.getElementById('shadowEnglishBadge');
     const shadowSpanishBadge = document.getElementById('shadowSpanishBadge');
     const shadowModeStatusBadge = document.getElementById('shadowModeStatusBadge');
+
+    const tabButtons = document.querySelectorAll('.tab-btn');
+    const tabPanels = document.querySelectorAll('.tab-panel');
+
+    function showTab(panelId) {
+      tabButtons.forEach(button => {
+        button.classList.toggle('active', button.dataset.tab === panelId);
+      });
+
+      tabPanels.forEach(panel => {
+        panel.classList.toggle('active', panel.id === panelId);
+      });
+    }
+
+    tabButtons.forEach(button => {
+      button.addEventListener('click', () => {
+        showTab(button.dataset.tab);
+      });
+    });
 
     function shuffleArray(arr) {
       for (let i = arr.length - 1; i > 0; i--) {
@@ -886,12 +932,14 @@
       deckSourceSelect.value = 'saved';
       categorySelect.value = 'All';
       handleDeckSourceChange();
-      statusText.textContent = 'Viewing saved phrases.';
+      showTab('flashcardsPanel');
+      statusText.textContent = 'Viewing saved phrases as flashcards.';
     }
 
     function switchToMainMode() {
       deckSourceSelect.value = 'main';
       handleDeckSourceChange();
+      showTab('flashcardsPanel');
       statusText.textContent = 'Viewing main flashcards.';
     }
 
@@ -1046,7 +1094,10 @@
 
     resetProgressBtn.addEventListener('click', resetProgress);
     savePhraseBtn.addEventListener('click', savePhraseToBrowser);
-    showSavedBtn.addEventListener('click', switchToSavedMode);
+    showSavedBtn.addEventListener('click', () => {
+      showTab('savedPanel');
+      statusText.textContent = 'Viewing saved phrases list.';
+    });
     showMainBtn.addEventListener('click', switchToMainMode);
     deleteSavedBtn.addEventListener('click', deleteCurrentSavedPhrase);
 
