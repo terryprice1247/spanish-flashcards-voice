@@ -1,4 +1,4 @@
-﻿spanish,english,category
+﻿weekend,english,category
 hola,hello,Basic Words
 gracias,thank you,Basic Words
 por favor,please,Normal Express
@@ -14,7 +14,7 @@ yo quiero agua,I want water,Items
 ¿Qué hora es?,What time is it?,Sentences
 Lo estoy intentando,I am trying,Sentences
 ¿Qué lenguas hablas?,What langauges do you speak?,Sentences
-¿Cuántos años tenéis vosotras?,How old are you?,Sentences
+¿Cuántos años tiene?,How old are you?,Sentences
 ¿Usted tiene hijos?,Do you have any children?,Sentences
 "Disculpa, ¿tienes un/a ________?","Excuse me, do you have a __________?",Sentences
 No tengo mi móvil. ¿Puedo usar el tuyo?,I don't have my mobile phone. Can I use yours?,Sentences
@@ -273,3 +273,35 @@ Es caro,It's expensive,Basic Words
 ¿En qué estás pensando?,What are you thinking about?,Sentences
 Es fácil,It’s easy,Basic Words
 Es difícil,It's difficult,Basic Words
+correos,emails,Basic Words
+comparte,shares,Basic Words
+¿Mandas mensajes a tus amigos?,Do you text your friends?,Sentences
+Nunca publico en las redes sociales.,I never post on social media,Sentences
+Estoy estresada porque trabajo muchas horas,I'm stressed because I work long hours,Sentences
+Publico en las redes sociales,Post on social media,Sentences
+redes sociales ,social media,Basic Words
+mensajes,messages,Basic Words
+tanto,so much ,Basic Words
+toca,plays (instrument),Basic Words
+¿Qué hacemos hoy?,What shall we do today?,Sentences
+¿Qué haces este fin de semana?,What are you doing this weekend?,Sentences
+¿A qué hora comes?,What time do you have lunch?,Sentences
+salgo,I go,Basic Words
+Conducir,to drive,Basic Words
+idiomas,langauges ,Basic Words
+bailar,to dance,Basic Words
+dibujar,to draw,Basic Words
+Conocer acerca de ostras culturas ,learning about other cultures ,Sentences
+No entiendo,I don't understand,Sentences
+¿Puedes repetir eso?,Can you repeat that?,Sentences
+Estoy perdido,I'm lost,Sentences
+¿Me puedes ayudar?,Can you help me? ,Sentences
+Tengo tiempo ,I have time,Normal Express
+Quiero aprender español,I want to learn Spanish,Sentences
+alquiler,Rent,Basic Words
+"?Puedo hablar con el propietario, por favor?","May I speak to the owner, please? ",Sentences
+Voy a mudarme a un edificio nuevo,I'm going to move to a new building.,Sentences
+aire acondicionado,air conditioning,Basic Words
+¿Cuánto cuesta el alquiler?,How much is the rent?,Sentences
+"Gracias. Todavía cometo muchos errores, pero sigo practicando.","Thanks. I still make a lot of mistakes, but I keep practicing",Sentences
+ejercicio,exercise ,Basic Words
