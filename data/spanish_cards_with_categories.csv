@@ -36,7 +36,7 @@ Que te vaya bien,Have a good time,Sentences
 Por favor,Please,Normal Express
 Lo siento,I am sorry,Normal Express
 En eso estoy,I am on it,Normal Express
-Voy por ti,I'll come pick you up,Normal Express
+Voy por ti,I'll come pick you up,Going out to eat
 No te vayas,Don't leave,Normal Express
 Ya casi termino,I'm almost finished,Normal Express
 Tienes que probarlo (pro-bar-lo),You have to try this,Sentences
@@ -66,7 +66,7 @@ Normalmente tomo café en mi casa,I usually have coffee in my house.,Home
 Todas las noches vemos la tele en el sofá.,"Every night, we watch T.V on the sofa",Home
 Normalmente me despierto a las siete en punto.,I usually wake up at 7'O clock,Home
 Me lavo los dientes después de comer.,I brush my teeth after I eat,Home
-Compro en el mercado,I shop in the market,Sentences
+Compro en el mercado,I shop in the market,Places
 Tengo la lista de la compra en mi móvil.,I have a shopping list on my phone,Sentences
 Hay una pescadería en el mercado.,There' a fishmonger in the marker,Directions 
 "Antes de ir al supermercado, escribo la lista de la compra.","Before going to the supermarket, I write a shopping list.",Sentences
@@ -166,7 +166,7 @@ Enseñar / enseño,Teaches,Normal Express
 Pensar / Pienso,Think,Normal Express
 Preferir / yo prefiero,Prefer,Normal Express
 Poder / Puedo ,Can,Normal Express
-Volver / Vuelvo (I) / Vuelves ,To go back ,Normal Express
+Volver / Vuelvo (I) / Vuelves ,To go back ,Directions 
 Querer / Quiero (I) / Quieres,Want,Basic Words
 Dormir / Duermes,Sleep,Basic Words
 Tener  / Tengo,Have,Basic Words
@@ -185,7 +185,7 @@ aburrida (abu-rrida),Bored,Normal Express
 enfadado (en-fa-da-do),Angry,Basic Words
 Estresada,Stressed,Basic Words
 Preocupada (pre-ocu-pada),Worried,Basic Words
-¿Has comido ya hoy?,Have you eaten yet today?,Sentences
+¿Has comido ya hoy?,Have you eaten yet today?,Going out to eat
 ¿Cuándo fue la última vez que viajaste?,When was the last time you traveled?,Sentences
 "Si tienes tiempo mañana, ¿quieres practicar español conmigo?","If you have time tomorrow, do you want to pratice Spanish with me?",Sentences
 Ella se levanta más tarde los fines de semana.,She gets up later on the weekends.,Home
@@ -216,7 +216,7 @@ abierto / abren,open,Basic Words
 menos cuarto,quarter to,Home
 la medianoche (medi-ah-noche),Midnight,Basic Words
 No puedo.,I can't,Basic Words
-¿Me acompañas?,Will you join me?,Basic Words
+¿Me acompañas?,Will you join me?,Going out to eat
 Por aquí / Por ahí,This way / That way,Sentences
 Lo olvide por completo (ol-vi-de) (com-ple-to),I completely forgot,Sentences
 Sígueme,Follow me,Normal Express
@@ -225,7 +225,7 @@ Piénsalo,Think about it,Basic Words
 Estoy de buen humor,I am in a good mood,Sentences
 Son las doce en punto.,it's twelve o'clock,Sentences
 Coger un autobús,To take a bus ,Sentences
-ir en metro,To go by underground,Sentences
+ir en metro,To go by underground,Places
 ir en tren,To go by train,Sentences
 ir en barco,To go by boat,Sentences
 ir en coche ,To go by car,Sentences
@@ -236,10 +236,10 @@ el billete (b-eh-te),The ticket,Basic Words
 ¿Cuándo?,When?,Basic Words
 ¿Cómo?,How?,Basic Words
 ¿Cuánto?,How much?,Basic Words
-¿Cuál es la manera más rápida?,What's the fastest way?,Sentences
+¿Cuál es la manera más rápida?,What's the fastest way?,Directions 
 Se / Sabes / sabemos ,Can (ability to do so),Basic Words
 Correr,to run,Basic Words
-Hacer senderismo (send-der-rismo),to go hiking,Sentences
+Hacer senderismo (send-der-rismo),to go hiking,Basic Words
 el baloncesto (balon-cesto),basketball,Basic Words
 nadar ,to swim,Basic Words
 esquiar (es-qui-ar),to ski,Basic Words
@@ -259,9 +259,9 @@ Igualmente (ee - gual - men- te),Same here,Basic Words
 ¿Qué te gusta hacer en tu tiempo libre?,What do you like to do in your free time?,Sentences
 Ver ,Watch,Basic Words
 Películas,Movies,Normal Express
-Necesito ir al aeropuerto (ah-roh-PWER-toh),I need to go to the airport,Sentences
+Necesito ir al aeropuerto (ah-roh-PWER-toh),I need to go to the airport,Directions 
 Llámame / Te llamaré,Call me  / Call you ,Sentences
-¿Dónde está la salida?,Where is the exit?,Sentences
+¿Dónde está la salida?,Where is the exit?,Directions 
 Tengo hambre / Tengo sed,I'm hungry /  I'm thirsty ,Normal Express
 "Por favor, siéntate.",Please sit down,Sentences
 ¿Quieres un poco?,Do you want some?,Sentences
@@ -312,3 +312,16 @@ el microondas,the microwave,Basic Words
 la cortina,the curtain,Basic Words
 la alfombra,the rug,Basic Words
 jabón,soap,Basic Words
+ayer,yesterday,Basic Words
+temprano,early,Basic Words
+luego,then,Basic Words
+Si tuviera ,If I had,Normal Express
+"No entiendo muy bien el español, ¿puede hablar más despacio?",I don't understand Spanish very well; can you speak more slowly?,Sentences
+¿Me puede recomendar un buen lugar para comer tacos?,Can you recommend a good place to eat tacos?,Going out to eat
+quedarme,stay/remain,Basic Words
+Voy a quedarme aquí por una semana.,I'm going to stay here for one week,Sentences
+tarjeta,card,Basic Words
+efectivo,cash,Basic Words
+¿Aceptan tarjeta?,Do you take card?,Going out to eat
+Solo efectivo.,Cash only,Going out to eat
+me equivoqué,I made a mistake / I was wrong,Basic Words
