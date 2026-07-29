@@ -361,14 +361,14 @@
       advancedSettingsToggle.textContent = isOpen ? '✕ Hide Extra Settings' : '⚙️ More Settings';
     }
 
-    function showTab(panelId) {
-      compactModeToggle.addEventListener('click', () => {
+    compactModeToggle.addEventListener('click', () => {
       setCompactMode(!document.body.classList.contains('compact-mode'));
     });
 
     advancedSettingsToggle.addEventListener('click', toggleAdvancedSettings);
 
-    tabButtons.forEach(button => {
+    function showTab(panelId) {
+      tabButtons.forEach(button => {
         button.classList.toggle('active', button.dataset.tab === panelId);
       });
 
