@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Spanish Flashcards Web</title>
-  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="/static/style.css?v=compact-mode-4">
 
   <style>
     .tab-panel {
@@ -15,6 +15,210 @@
       display: block !important;
     }
   </style>
+
+  <style id="compact-mode-render-fix">
+    /*
+      Render/cache-safe compact override.
+      Kept inside index.html so Compact Mode does not depend on a cached style.css.
+    */
+    #compactModeToggle {
+      display: inline-flex !important;
+      align-items: center;
+      justify-content: center;
+      width: auto !important;
+    }
+
+    body.compact-mode .page {
+      display: block !important;
+      padding: 8px !important;
+    }
+
+    body.compact-mode .panel {
+      width: min(520px, calc(100vw - 16px)) !important;
+      max-width: 520px !important;
+      margin: 0 auto !important;
+      padding: 12px !important;
+      border-radius: 20px !important;
+    }
+
+    body.compact-mode .header-row {
+      padding: 0 0 10px !important;
+      align-items: center !important;
+    }
+
+    body.compact-mode .header-row h1 {
+      margin: 0 !important;
+      font-size: 1.25rem !important;
+      line-height: 1.1 !important;
+      letter-spacing: -0.02em !important;
+    }
+
+    body.compact-mode .header-row .muted {
+      display: none !important;
+    }
+
+    body.compact-mode .header-actions {
+      gap: 7px !important;
+    }
+
+    body.compact-mode .pill,
+    body.compact-mode .compact-toggle {
+      padding: 7px 10px !important;
+      font-size: 0.78rem !important;
+    }
+
+    body.compact-mode .mode-tabs {
+      display: flex !important;
+      gap: 6px !important;
+      margin-top: 10px !important;
+      overflow-x: auto !important;
+    }
+
+    body.compact-mode .tab-btn {
+      flex: 1 0 auto !important;
+      width: auto !important;
+      min-width: 74px !important;
+      padding: 9px 10px !important;
+      font-size: 0.76rem !important;
+      white-space: nowrap !important;
+    }
+
+    body.compact-mode .section-heading {
+      margin: 14px 0 3px !important;
+      font-size: 1rem !important;
+    }
+
+    body.compact-mode .section-subtitle {
+      display: none !important;
+    }
+
+    body.compact-mode #flashcardsPanel > .controls {
+      display: grid !important;
+      grid-template-columns: 1fr 1fr !important;
+      gap: 9px !important;
+      margin-top: 10px !important;
+    }
+
+    body.compact-mode #flashcardsPanel > .controls label {
+      gap: 5px !important;
+      font-size: 0.72rem !important;
+    }
+
+    body.compact-mode #flashcardsPanel > .controls select {
+      padding: 10px !important;
+      font-size: 0.86rem !important;
+    }
+
+    body.compact-mode:not(.compact-advanced-open) #flashcardsPanel > .controls label:nth-child(1),
+    body.compact-mode:not(.compact-advanced-open) #flashcardsPanel > .controls label:nth-child(5),
+    body.compact-mode:not(.compact-advanced-open) #flashcardsPanel > .controls label:nth-child(6),
+    body.compact-mode:not(.compact-advanced-open) #flashcardsPanel > .controls label:nth-child(7) {
+      display: none !important;
+    }
+
+    body.compact-mode #flashcardsPanel > .controls label:nth-child(2) {
+      grid-column: 1 / -1 !important;
+    }
+
+    body.compact-mode .advanced-toggle-row {
+      display: block !important;
+      margin-top: 8px !important;
+    }
+
+    body.compact-mode .advanced-toggle-row button {
+      width: 100% !important;
+      padding: 8px 10px !important;
+      font-size: 0.78rem !important;
+    }
+
+    body.compact-mode .flashcard-stage {
+      margin-top: 12px !important;
+      padding: 14px !important;
+      border-radius: 20px !important;
+    }
+
+    body.compact-mode .flashcard-stage .card-text {
+      min-height: 150px !important;
+      font-size: clamp(2rem, 12vw, 3rem) !important;
+    }
+
+    body.compact-mode .sr-stats {
+      gap: 6px !important;
+      margin-top: 4px !important;
+    }
+
+    body.compact-mode .mini-badge {
+      padding: 6px 8px !important;
+      font-size: 0.72rem !important;
+    }
+
+    body.compact-mode #mistakeBadge {
+      display: none !important;
+    }
+
+    body.compact-mode .nav-row {
+      display: grid !important;
+      grid-template-columns: repeat(3, 1fr) !important;
+      gap: 7px !important;
+      margin-top: 10px !important;
+    }
+
+    body.compact-mode .nav-row button {
+      width: 100% !important;
+      min-width: 0 !important;
+      padding: 11px 5px !important;
+      font-size: 0.82rem !important;
+    }
+
+    body.compact-mode .utility-row {
+      display: grid !important;
+      grid-template-columns: 1fr 1fr !important;
+      gap: 7px !important;
+      margin-top: 8px !important;
+    }
+
+    body.compact-mode .utility-row button {
+      width: 100% !important;
+      min-width: 0 !important;
+      padding: 11px 7px !important;
+      font-size: 0.82rem !important;
+    }
+
+    body.compact-mode #resetProgressBtn,
+    body.compact-mode #deleteSavedBtn:disabled {
+      display: none !important;
+    }
+
+    body.compact-mode #deleteSavedBtn:not(:disabled) {
+      grid-column: 1 / -1 !important;
+    }
+
+    body.compact-mode .rating-row {
+      display: grid !important;
+      grid-template-columns: 1fr 1fr !important;
+      gap: 7px !important;
+      margin-top: 8px !important;
+    }
+
+    body.compact-mode .rating-row button {
+      width: 100% !important;
+      min-width: 0 !important;
+      padding: 12px 8px !important;
+    }
+
+    body.compact-mode .status {
+      margin: 10px 2px 2px !important;
+      font-size: 0.76rem !important;
+    }
+
+    @media (max-width: 540px) {
+      body.compact-mode .panel {
+        width: calc(100vw - 16px) !important;
+        max-width: none !important;
+      }
+    }
+  </style>
+
 </head>
 <body>
   <main class="page">
