@@ -24,7 +24,10 @@
           <h1>Spanish Flashcards Web</h1>
           <p class="muted">Spaced repetition, saved phrases, live translate, and shadow listening practice.</p>
         </div>
-        <div class="pill" id="cardsLoadedPill">Cards loaded: {{ total }}</div>
+        <div class="header-actions">
+          <div class="pill" id="cardsLoadedPill">Cards loaded: {{ total }}</div>
+          <button id="compactModeToggle" class="compact-toggle" type="button" aria-pressed="false">📱 Compact Mode</button>
+        </div>
       </div>
 
       <div class="mode-tabs">
@@ -101,6 +104,10 @@
           </label>
         </div>
 
+        <div class="advanced-toggle-row">
+          <button id="advancedSettingsToggle" type="button" aria-expanded="false">⚙️ More Settings</button>
+        </div>
+
         <section class="card-shell flashcard-stage">
           <div class="card-meta">
             <span id="categoryBadge" class="badge">-</span>
@@ -117,13 +124,13 @@
           </div>
         </section>
 
-        <div class="button-row">
+        <div class="button-row nav-row">
           <button id="prevBtn" type="button">◀ Prev</button>
           <button id="flipBtn" type="button">Flip</button>
           <button id="nextBtn" type="button">Next ▶</button>
         </div>
 
-        <div class="button-row secondary">
+        <div class="button-row secondary utility-row">
           <button id="speakBtn" type="button" {% if not voice_enabled %}disabled{% endif %}>🔊 Speak</button>
           <button id="shuffleBtn" type="button">Shuffle</button>
           <button id="resetProgressBtn" type="button">Reset Progress</button>
@@ -266,6 +273,7 @@
 
     const PROGRESS_STORAGE_KEY = 'spanish_flashcards_progress_v1';
     const SAVED_PHRASES_STORAGE_KEY = 'spanish_saved_phrases_v1';
+    const COMPACT_MODE_STORAGE_KEY = 'spanish_compact_mode_v1';
 
     let allCards = [...initialCards];
     let cards = [];
@@ -331,9 +339,36 @@
 
     const tabButtons = document.querySelectorAll('.tab-btn');
     const tabPanels = document.querySelectorAll('.tab-panel');
+    const compactModeToggle = document.getElementById('compactModeToggle');
+    const advancedSettingsToggle = document.getElementById('advancedSettingsToggle');
+
+    function setCompactMode(enabled) {
+      document.body.classList.toggle('compact-mode', enabled);
+      compactModeToggle.setAttribute('aria-pressed', String(enabled));
+      compactModeToggle.textContent = enabled ? '🖥️ Full Mode' : '📱 Compact Mode';
+      localStorage.setItem(COMPACT_MODE_STORAGE_KEY, enabled ? 'on' : 'off');
+
+      if (!enabled) {
+        document.body.classList.remove('compact-advanced-open');
+        advancedSettingsToggle.setAttribute('aria-expanded', 'false');
+        advancedSettingsToggle.textContent = '⚙️ More Settings';
+      }
+    }
+
+    function toggleAdvancedSettings() {
+      const isOpen = document.body.classList.toggle('compact-advanced-open');
+      advancedSettingsToggle.setAttribute('aria-expanded', String(isOpen));
+      advancedSettingsToggle.textContent = isOpen ? '✕ Hide Extra Settings' : '⚙️ More Settings';
+    }
 
     function showTab(panelId) {
-      tabButtons.forEach(button => {
+      compactModeToggle.addEventListener('click', () => {
+      setCompactMode(!document.body.classList.contains('compact-mode'));
+    });
+
+    advancedSettingsToggle.addEventListener('click', toggleAdvancedSettings);
+
+    tabButtons.forEach(button => {
         button.classList.toggle('active', button.dataset.tab === panelId);
       });
 
@@ -1184,6 +1219,7 @@
       }
     });
 
+    setCompactMode(localStorage.getItem(COMPACT_MODE_STORAGE_KEY) === 'on');
     updateSavedPhraseCountUI();
     renderSavedPhraseList();
     handleDeckSourceChange();
