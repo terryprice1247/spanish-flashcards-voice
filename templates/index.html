@@ -342,7 +342,7 @@
     const compactModeToggle = document.getElementById('compactModeToggle');
     const advancedSettingsToggle = document.getElementById('advancedSettingsToggle');
 
-    function setCompactMode(enabled) {
+    function setCompactMode(enabled, announce = true) {
       document.body.classList.toggle('compact-mode', enabled);
       compactModeToggle.setAttribute('aria-pressed', String(enabled));
       compactModeToggle.textContent = enabled ? '🖥️ Full Mode' : '📱 Compact Mode';
@@ -352,6 +352,12 @@
         document.body.classList.remove('compact-advanced-open');
         advancedSettingsToggle.setAttribute('aria-expanded', 'false');
         advancedSettingsToggle.textContent = '⚙️ More Settings';
+      }
+
+      if (announce && statusText) {
+        statusText.textContent = enabled
+          ? 'Compact mode active.'
+          : 'Full mode active.';
       }
     }
 
@@ -1219,7 +1225,7 @@
       }
     });
 
-    setCompactMode(localStorage.getItem(COMPACT_MODE_STORAGE_KEY) === 'on');
+    setCompactMode(localStorage.getItem(COMPACT_MODE_STORAGE_KEY) === 'on', false);
     updateSavedPhraseCountUI();
     renderSavedPhraseList();
     handleDeckSourceChange();
