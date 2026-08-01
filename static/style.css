@@ -411,3 +411,119 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
     width: 100%;
   }
 }
+
+/* SAVED PHRASES LIBRARY */
+.saved-panel-toolbar {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+
+.saved-library-shell {
+  margin-top: 16px;
+}
+
+.saved-library-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.saved-library-tab.active {
+  background: linear-gradient(180deg, #0284c7, #075985);
+  border-color: rgba(56, 189, 248, 0.75);
+}
+
+.saved-library-list {
+  display: grid;
+  gap: 10px;
+}
+
+.saved-library-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: rgba(2, 6, 23, 0.62);
+}
+
+.saved-library-copy {
+  min-width: 0;
+}
+
+.saved-library-english {
+  font-weight: 800;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.saved-library-spanish {
+  margin-top: 5px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.saved-library-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.saved-library-actions button {
+  min-width: 0;
+  padding: 9px 12px;
+  font-size: 0.82rem;
+}
+
+.store-btn {
+  border-color: rgba(251, 191, 36, 0.55);
+}
+
+.restore-btn {
+  border-color: rgba(34, 197, 94, 0.55);
+}
+
+.permanent-delete-btn,
+#deleteSavedDeckBtn {
+  border-color: rgba(248, 113, 113, 0.55);
+}
+
+#storeSavedDeckBtn {
+  border-color: rgba(251, 191, 36, 0.55);
+}
+
+.saved-library-empty {
+  padding: 22px;
+  text-align: center;
+  color: var(--muted);
+}
+
+body.compact-mode .saved-panel-toolbar {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 7px !important;
+}
+
+body.compact-mode .saved-library-tabs {
+  grid-template-columns: 1fr !important;
+}
+
+body.compact-mode .saved-library-item {
+  grid-template-columns: 1fr !important;
+}
+
+body.compact-mode .saved-library-actions {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+}
+
+body.compact-mode .saved-library-actions button {
+  width: 100% !important;
+}
