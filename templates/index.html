@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Spanish Flashcards Web</title>
-  <link rel="stylesheet" href="/static/style.css?v=saved-deck-1">
+  <link rel="stylesheet" href="/static/style.css?v=saved-library-2">
 
   <style>
     .tab-panel {
@@ -486,27 +486,46 @@
 
       <section id="savedPanel" class="tab-panel">
         <h2 class="section-heading">Saved Phrases</h2>
-        <p class="section-subtitle">Your personal deck of important words and phrases.</p>
+        <p class="section-subtitle">Your active practice deck and stored phrase library.</p>
 
-        <section class="card-shell flashcard-stage">
-          <div class="card-meta">
-            <span class="badge">⭐ Saved Phrase</span>
-            <span id="savedDeckProgressText">0 / 0</span>
+        <div class="saved-panel-toolbar">
+          <button id="toggleSavedLibraryBtn" type="button">📚 Show All Saved</button>
+        </div>
+
+        <div id="savedDeckView">
+          <section class="card-shell flashcard-stage">
+            <div class="card-meta">
+              <span class="badge">⭐ Active Saved Phrase</span>
+              <span id="savedDeckProgressText">0 / 0</span>
+            </div>
+
+            <div id="savedDeckCardText" class="card-text">No active saved phrases yet.</div>
+          </section>
+
+          <div class="button-row saved-deck-nav">
+            <button id="savedDeckPrevBtn" type="button">◀ Prev</button>
+            <button id="savedDeckFlipBtn" type="button">Flip</button>
+            <button id="savedDeckNextBtn" type="button">Next ▶</button>
           </div>
 
-          <div id="savedDeckCardText" class="card-text">No saved phrases yet.</div>
+          <div class="button-row secondary saved-deck-actions">
+            <button id="savedDeckSpeakBtn" type="button" {% if not voice_enabled %}disabled{% endif %}>🔊 Speak</button>
+            <button id="storeSavedDeckBtn" type="button">📦 Store for Later</button>
+            <button id="deleteSavedDeckBtn" type="button">🗑 Delete Saved Copy</button>
+          </div>
+        </div>
+
+        <section id="savedLibraryView" class="card-shell saved-library-shell" hidden>
+          <div class="saved-library-tabs">
+            <button class="saved-library-tab active" type="button" data-library-filter="active">Active (0)</button>
+            <button class="saved-library-tab" type="button" data-library-filter="stored">Stored (0)</button>
+            <button class="saved-library-tab" type="button" data-library-filter="all">All (0)</button>
+          </div>
+
+          <div id="savedLibraryList" class="saved-library-list">
+            <div class="saved-library-empty">No saved phrases yet.</div>
+          </div>
         </section>
-
-        <div class="button-row saved-deck-nav">
-          <button id="savedDeckPrevBtn" type="button">◀ Prev</button>
-          <button id="savedDeckFlipBtn" type="button">Flip</button>
-          <button id="savedDeckNextBtn" type="button">Next ▶</button>
-        </div>
-
-        <div class="button-row secondary saved-deck-actions">
-          <button id="savedDeckSpeakBtn" type="button" {% if not voice_enabled %}disabled{% endif %}>🔊 Speak</button>
-          <button id="deleteSavedDeckBtn" type="button">🗑 Delete Saved Copy</button>
-        </div>
       </section>
 
       {% if not voice_enabled %}
@@ -521,9 +540,10 @@
     const initialCards = {{ cards | tojson }};
 
     const PROGRESS_STORAGE_KEY = 'spanish_flashcards_progress_v1';
-    const SAVED_PHRASES_STORAGE_KEY = 'spanish_saved_phrases_v1';
+    const LEGACY_SAVED_PHRASES_STORAGE_KEY = 'spanish_saved_phrases_v1';
+    const LEGACY_MIGRATION_KEY = 'spanish_saved_phrases_server_migrated_v1';
     const COMPACT_MODE_STORAGE_KEY = 'spanish_compact_mode_v1';
-    const SAVED_DECK_INDEX_STORAGE_KEY = 'spanish_saved_deck_index_v1';
+    const SAVED_DECK_INDEX_STORAGE_KEY = 'spanish_saved_deck_index_v2';
 
     let allCards = [...initialCards];
     let cards = [];
@@ -531,73 +551,88 @@
     let showingAnswer = false;
     let lastTranslatedEnglish = '';
     let lastTranslatedSpanish = '';
-    let savedDeckIndex = Number.parseInt(localStorage.getItem(SAVED_DECK_INDEX_STORAGE_KEY) || '0', 10);
+
+    let savedPhrases = [];
+    let savedDeckIndex = Number.parseInt(
+      localStorage.getItem(SAVED_DECK_INDEX_STORAGE_KEY) || '0',
+      10
+    );
     let savedDeckShowingAnswer = false;
+    let savedLibraryFilter = 'active';
+    let savedLibraryOpen = false;
 
     let shadowQueue = [];
     let shadowIndex = 0;
     let shadowCurrentItem = null;
     let shadowTextRevealed = false;
 
-    const deckSourceSelect = document.getElementById('deckSourceSelect');
-    const categorySelect = document.getElementById('categorySelect');
-    const promptSideSelect = document.getElementById('promptSideSelect');
-    const speedSelect = document.getElementById('speedSelect');
-    const liveSpeedSelect = document.getElementById('liveSpeedSelect');
-    const studyModeSelect = document.getElementById('studyModeSelect');
-    const masteredModeSelect = document.getElementById('masteredModeSelect');
-    const sortModeSelect = document.getElementById('sortModeSelect');
+    const byId = id => document.getElementById(id);
 
-    const cardText = document.getElementById('cardText');
-    const progressText = document.getElementById('progressText');
-    const categoryBadge = document.getElementById('categoryBadge');
-    const statusText = document.getElementById('statusText');
-    const speakBtn = document.getElementById('speakBtn');
-    const cardsLoadedPill = document.getElementById('cardsLoadedPill');
+    const deckSourceSelect = byId('deckSourceSelect');
+    const categorySelect = byId('categorySelect');
+    const promptSideSelect = byId('promptSideSelect');
+    const speedSelect = byId('speedSelect');
+    const liveSpeedSelect = byId('liveSpeedSelect');
+    const studyModeSelect = byId('studyModeSelect');
+    const masteredModeSelect = byId('masteredModeSelect');
+    const sortModeSelect = byId('sortModeSelect');
 
-    const dueBadge = document.getElementById('dueBadge');
-    const strengthBadge = document.getElementById('strengthBadge');
-    const streakBadge = document.getElementById('streakBadge');
-    const mistakeBadge = document.getElementById('mistakeBadge');
+    const cardText = byId('cardText');
+    const progressText = byId('progressText');
+    const categoryBadge = byId('categoryBadge');
+    const statusText = byId('statusText');
+    const speakBtn = byId('speakBtn');
+    const cardsLoadedPill = byId('cardsLoadedPill');
 
-    const liveEnglishInput = document.getElementById('liveEnglishInput');
-    const liveSpanishOutput = document.getElementById('liveSpanishOutput');
-    const translateSpeakBtn = document.getElementById('translateSpeakBtn');
-    const savePhraseBtn = document.getElementById('savePhraseBtn');
-    const savedPhraseCountBadge = document.getElementById('savedPhraseCountBadge');
-    const saveCurrentCardBtn = document.getElementById('saveCurrentCardBtn');
+    const dueBadge = byId('dueBadge');
+    const strengthBadge = byId('strengthBadge');
+    const streakBadge = byId('streakBadge');
+    const mistakeBadge = byId('mistakeBadge');
 
-    const savedDeckProgressText = document.getElementById('savedDeckProgressText');
-    const savedDeckCardText = document.getElementById('savedDeckCardText');
-    const savedDeckPrevBtn = document.getElementById('savedDeckPrevBtn');
-    const savedDeckFlipBtn = document.getElementById('savedDeckFlipBtn');
-    const savedDeckNextBtn = document.getElementById('savedDeckNextBtn');
-    const savedDeckSpeakBtn = document.getElementById('savedDeckSpeakBtn');
-    const deleteSavedDeckBtn = document.getElementById('deleteSavedDeckBtn');
+    const liveEnglishInput = byId('liveEnglishInput');
+    const liveSpanishOutput = byId('liveSpanishOutput');
+    const translateSpeakBtn = byId('translateSpeakBtn');
+    const savePhraseBtn = byId('savePhraseBtn');
+    const savedPhraseCountBadge = byId('savedPhraseCountBadge');
+    const saveCurrentCardBtn = byId('saveCurrentCardBtn');
 
-    const againBtn = document.getElementById('againBtn');
-    const hardBtn = document.getElementById('hardBtn');
-    const goodBtn = document.getElementById('goodBtn');
-    const easyBtn = document.getElementById('easyBtn');
-    const resetProgressBtn = document.getElementById('resetProgressBtn');
+    const savedDeckProgressText = byId('savedDeckProgressText');
+    const savedDeckCardText = byId('savedDeckCardText');
+    const savedDeckPrevBtn = byId('savedDeckPrevBtn');
+    const savedDeckFlipBtn = byId('savedDeckFlipBtn');
+    const savedDeckNextBtn = byId('savedDeckNextBtn');
+    const savedDeckSpeakBtn = byId('savedDeckSpeakBtn');
+    const storeSavedDeckBtn = byId('storeSavedDeckBtn');
+    const deleteSavedDeckBtn = byId('deleteSavedDeckBtn');
+    const toggleSavedLibraryBtn = byId('toggleSavedLibraryBtn');
+    const savedDeckView = byId('savedDeckView');
+    const savedLibraryView = byId('savedLibraryView');
+    const savedLibraryList = byId('savedLibraryList');
+    const savedLibraryTabs = document.querySelectorAll('.saved-library-tab');
 
-    const shadowSourceSelect = document.getElementById('shadowSourceSelect');
-    const shadowSpeedSelect = document.getElementById('shadowSpeedSelect');
-    const shadowTextModeSelect = document.getElementById('shadowTextModeSelect');
-    const startShadowBtn = document.getElementById('startShadowBtn');
-    const replayShadowBtn = document.getElementById('replayShadowBtn');
-    const replayShadowSlowBtn = document.getElementById('replayShadowSlowBtn');
-    const revealShadowBtn = document.getElementById('revealShadowBtn');
-    const nextShadowBtn = document.getElementById('nextShadowBtn');
-    const shadowPromptOutput = document.getElementById('shadowPromptOutput');
-    const shadowEnglishBadge = document.getElementById('shadowEnglishBadge');
-    const shadowSpanishBadge = document.getElementById('shadowSpanishBadge');
-    const shadowModeStatusBadge = document.getElementById('shadowModeStatusBadge');
+    const againBtn = byId('againBtn');
+    const hardBtn = byId('hardBtn');
+    const goodBtn = byId('goodBtn');
+    const easyBtn = byId('easyBtn');
+    const resetProgressBtn = byId('resetProgressBtn');
+
+    const shadowSourceSelect = byId('shadowSourceSelect');
+    const shadowSpeedSelect = byId('shadowSpeedSelect');
+    const shadowTextModeSelect = byId('shadowTextModeSelect');
+    const startShadowBtn = byId('startShadowBtn');
+    const replayShadowBtn = byId('replayShadowBtn');
+    const replayShadowSlowBtn = byId('replayShadowSlowBtn');
+    const revealShadowBtn = byId('revealShadowBtn');
+    const nextShadowBtn = byId('nextShadowBtn');
+    const shadowPromptOutput = byId('shadowPromptOutput');
+    const shadowEnglishBadge = byId('shadowEnglishBadge');
+    const shadowSpanishBadge = byId('shadowSpanishBadge');
+    const shadowModeStatusBadge = byId('shadowModeStatusBadge');
 
     const tabButtons = document.querySelectorAll('.tab-btn');
     const tabPanels = document.querySelectorAll('.tab-panel');
-    const compactModeToggle = document.getElementById('compactModeToggle');
-    const advancedSettingsToggle = document.getElementById('advancedSettingsToggle');
+    const compactModeToggle = byId('compactModeToggle');
+    const advancedSettingsToggle = byId('advancedSettingsToggle');
 
     function setCompactMode(enabled, announce = true) {
       document.body.classList.toggle('compact-mode', enabled);
@@ -611,10 +646,8 @@
         advancedSettingsToggle.textContent = '⚙️ More Settings';
       }
 
-      if (announce && statusText) {
-        statusText.textContent = enabled
-          ? 'Compact mode active.'
-          : 'Full mode active.';
+      if (announce) {
+        statusText.textContent = enabled ? 'Compact mode active.' : 'Full mode active.';
       }
     }
 
@@ -627,8 +660,23 @@
     compactModeToggle.addEventListener('click', () => {
       setCompactMode(!document.body.classList.contains('compact-mode'));
     });
-
     advancedSettingsToggle.addEventListener('click', toggleAdvancedSettings);
+
+    async function apiJson(url, options = {}) {
+      const response = await fetch(url, options);
+      let data = {};
+      try {
+        data = await response.json();
+      } catch {
+        data = {};
+      }
+
+      if (!response.ok) {
+        throw new Error(data.detail || 'Request failed.');
+      }
+
+      return data;
+    }
 
     function showTab(panelId) {
       tabButtons.forEach(button => {
@@ -641,13 +689,12 @@
 
       if (panelId === 'savedPanel') {
         renderSavedDeckCard();
+        renderSavedLibrary();
       }
     }
 
     tabButtons.forEach(button => {
-      button.addEventListener('click', () => {
-        showTab(button.dataset.tab);
-      });
+      button.addEventListener('click', () => showTab(button.dataset.tab));
     });
 
     function shuffleArray(arr) {
@@ -661,8 +708,7 @@
       try {
         const raw = localStorage.getItem(key);
         if (!raw) return fallback;
-        const parsed = JSON.parse(raw);
-        return parsed ?? fallback;
+        return JSON.parse(raw) ?? fallback;
       } catch {
         return fallback;
       }
@@ -673,7 +719,69 @@
     }
 
     let progressMap = loadJsonFromStorage(PROGRESS_STORAGE_KEY, {});
-    let savedPhrases = loadJsonFromStorage(SAVED_PHRASES_STORAGE_KEY, []);
+
+    function getActiveSavedPhrases() {
+      return savedPhrases.filter(item => !item.stored);
+    }
+
+    function getStoredSavedPhrases() {
+      return savedPhrases.filter(item => item.stored);
+    }
+
+    function phraseAlreadySaved(english, spanish) {
+      return savedPhrases.some(item =>
+        item.english.trim().toLowerCase() === english.trim().toLowerCase() &&
+        item.spanish.trim().toLowerCase() === spanish.trim().toLowerCase()
+      );
+    }
+
+    async function migrateLegacyBrowserSavedPhrases() {
+      if (localStorage.getItem(LEGACY_MIGRATION_KEY) === 'done') return;
+
+      const legacyPhrases = loadJsonFromStorage(LEGACY_SAVED_PHRASES_STORAGE_KEY, []);
+      if (!Array.isArray(legacyPhrases) || !legacyPhrases.length) {
+        localStorage.setItem(LEGACY_MIGRATION_KEY, 'done');
+        return;
+      }
+
+      for (const phrase of legacyPhrases) {
+        const english = String(phrase?.english || '').trim();
+        const spanish = String(phrase?.spanish || '').trim();
+        if (!english || !spanish) continue;
+
+        try {
+          await apiJson('/api/save-phrase', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ english, spanish })
+          });
+        } catch (error) {
+          console.warn('Legacy saved phrase migration failed:', error);
+          return;
+        }
+      }
+
+      localStorage.setItem(LEGACY_MIGRATION_KEY, 'done');
+    }
+
+    async function loadSavedPhrasesFromServer() {
+      try {
+        const data = await apiJson('/api/saved-phrases');
+        savedPhrases = Array.isArray(data.phrases) ? data.phrases : [];
+        normalizeSavedDeckIndex();
+        updateSavedPhraseCountUI();
+        renderSavedDeckCard();
+        renderSavedLibrary();
+
+        if (getCurrentDeckSource() === 'saved') {
+          refreshDeck(false);
+        } else {
+          updateSaveCurrentCardButton();
+        }
+      } catch (error) {
+        statusText.textContent = `Saved phrases error: ${error.message}`;
+      }
+    }
 
     function getCurrentDeckSource() {
       return deckSourceSelect.value;
@@ -681,7 +789,7 @@
 
     function getWorkingSourceCards() {
       if (getCurrentDeckSource() === 'saved') {
-        return savedPhrases.map(item => ({
+        return getActiveSavedPhrases().map(item => ({
           english: item.english,
           spanish: item.spanish,
           category: 'Saved Phrase',
@@ -689,15 +797,12 @@
         }));
       }
 
-      return allCards.map(card => ({
-        ...card,
-        source: 'main'
-      }));
+      return allCards.map(card => ({ ...card, source: 'main' }));
     }
 
     function getShadowSourceCards() {
       if (shadowSourceSelect.value === 'saved') {
-        return savedPhrases.map(item => ({
+        return getActiveSavedPhrases().map(item => ({
           english: item.english,
           spanish: item.spanish,
           category: 'Saved Phrase',
@@ -728,16 +833,14 @@
     }
 
     function getProgress(card) {
-      const key = getCardKey(card);
       return {
         ...getDefaultProgress(),
-        ...(progressMap[key] || {})
+        ...(progressMap[getCardKey(card)] || {})
       };
     }
 
     function setProgress(card, progress) {
-      const key = getCardKey(card);
-      progressMap[key] = progress;
+      progressMap[getCardKey(card)] = progress;
       saveJsonToStorage(PROGRESS_STORAGE_KEY, progressMap);
     }
 
@@ -747,8 +850,7 @@
 
     function isDue(card) {
       const progress = getProgress(card);
-      if (!progress.dueAt) return true;
-      return progress.dueAt <= nowMs();
+      return !progress.dueAt || progress.dueAt <= nowMs();
     }
 
     function isWeak(card) {
@@ -757,18 +859,15 @@
     }
 
     function isNew(card) {
-      const progress = getProgress(card);
-      return progress.seenCount === 0;
+      return getProgress(card).seenCount === 0;
     }
 
     function isMastered(card) {
-      const progress = getProgress(card);
-      return !!progress.mastered;
+      return !!getProgress(card).mastered;
     }
 
     function getStrengthLabel(card) {
       const progress = getProgress(card);
-
       if (progress.mastered) return 'Mastered';
       if (progress.seenCount === 0) return 'New';
       if (progress.lastRating === 'again') return 'Shaky';
@@ -791,17 +890,28 @@
       const hours = Math.ceil(minutes / 60);
       if (hours < 24) return `${hours}h`;
 
-      const days = Math.ceil(hours / 24);
-      return `${days}d`;
+      return `${Math.ceil(hours / 24)}d`;
     }
 
     function currentCard() {
-      if (!cards.length) return null;
-      return cards[index];
+      return cards[index] || null;
     }
 
     function updateSavedPhraseCountUI() {
-      savedPhraseCountBadge.textContent = `Saved phrases: ${savedPhrases.length}`;
+      const active = getActiveSavedPhrases().length;
+      const stored = getStoredSavedPhrases().length;
+      savedPhraseCountBadge.textContent = `Saved: ${active} active · ${stored} stored`;
+
+      savedLibraryTabs.forEach(button => {
+        const filter = button.dataset.libraryFilter;
+        const count = filter === 'active'
+          ? active
+          : filter === 'stored'
+            ? stored
+            : savedPhrases.length;
+        const label = filter.charAt(0).toUpperCase() + filter.slice(1);
+        button.textContent = `${label} (${count})`;
+      });
     }
 
     function updateHeaderCountUI(filteredCount) {
@@ -809,75 +919,60 @@
       cardsLoadedPill.textContent = `${label}: ${filteredCount}`;
     }
 
-    function phraseAlreadySaved(english, spanish) {
-      return savedPhrases.some(item =>
-        item.english.trim().toLowerCase() === english.trim().toLowerCase() &&
-        item.spanish.trim().toLowerCase() === spanish.trim().toLowerCase()
-      );
-    }
-
     function normalizeSavedDeckIndex() {
-      if (!savedPhrases.length) {
+      const active = getActiveSavedPhrases();
+      if (!active.length) {
         savedDeckIndex = 0;
-        return;
+      } else {
+        if (!Number.isInteger(savedDeckIndex) || savedDeckIndex < 0) savedDeckIndex = 0;
+        if (savedDeckIndex >= active.length) savedDeckIndex = active.length - 1;
       }
-
-      if (!Number.isInteger(savedDeckIndex) || savedDeckIndex < 0) {
-        savedDeckIndex = 0;
-      }
-
-      if (savedDeckIndex >= savedPhrases.length) {
-        savedDeckIndex = savedPhrases.length - 1;
-      }
-
       localStorage.setItem(SAVED_DECK_INDEX_STORAGE_KEY, String(savedDeckIndex));
     }
 
     function currentSavedDeckPhrase() {
       normalizeSavedDeckIndex();
-      return savedPhrases[savedDeckIndex] || null;
+      return getActiveSavedPhrases()[savedDeckIndex] || null;
     }
 
     function renderSavedDeckCard() {
       const phrase = currentSavedDeckPhrase();
       const hasPhrase = !!phrase;
 
-      savedDeckPrevBtn.disabled = !hasPhrase;
-      savedDeckFlipBtn.disabled = !hasPhrase;
-      savedDeckNextBtn.disabled = !hasPhrase;
-      deleteSavedDeckBtn.disabled = !hasPhrase;
+      [savedDeckPrevBtn, savedDeckFlipBtn, savedDeckNextBtn, storeSavedDeckBtn, deleteSavedDeckBtn]
+        .forEach(button => button.disabled = !hasPhrase);
 
       if (!hasPhrase) {
-        savedDeckCardText.textContent = 'No saved phrases yet.';
+        savedDeckCardText.textContent = 'No active saved phrases yet.';
         savedDeckProgressText.textContent = '0 / 0';
         savedDeckShowingAnswer = false;
         return;
       }
 
-      savedDeckCardText.textContent = savedDeckShowingAnswer
-        ? phrase.spanish
-        : phrase.english;
-
-      savedDeckProgressText.textContent = `${savedDeckIndex + 1} / ${savedPhrases.length}`;
+      const active = getActiveSavedPhrases();
+      savedDeckCardText.textContent = savedDeckShowingAnswer ? phrase.spanish : phrase.english;
+      savedDeckProgressText.textContent = `${savedDeckIndex + 1} / ${active.length}`;
       localStorage.setItem(SAVED_DECK_INDEX_STORAGE_KEY, String(savedDeckIndex));
     }
 
     function nextSavedDeckCard() {
-      if (!savedPhrases.length) return;
-      savedDeckIndex = (savedDeckIndex + 1) % savedPhrases.length;
+      const active = getActiveSavedPhrases();
+      if (!active.length) return;
+      savedDeckIndex = (savedDeckIndex + 1) % active.length;
       savedDeckShowingAnswer = false;
       renderSavedDeckCard();
     }
 
     function prevSavedDeckCard() {
-      if (!savedPhrases.length) return;
-      savedDeckIndex = (savedDeckIndex - 1 + savedPhrases.length) % savedPhrases.length;
+      const active = getActiveSavedPhrases();
+      if (!active.length) return;
+      savedDeckIndex = (savedDeckIndex - 1 + active.length) % active.length;
       savedDeckShowingAnswer = false;
       renderSavedDeckCard();
     }
 
     function flipSavedDeckCard() {
-      if (!savedPhrases.length) return;
+      if (!currentSavedDeckPhrase()) return;
       savedDeckShowingAnswer = !savedDeckShowingAnswer;
       renderSavedDeckCard();
     }
@@ -899,43 +994,73 @@
       }
     }
 
-    function deleteSavedDeckPhrase() {
+    async function changePhraseState(endpoint, phrase, successMessage) {
+      await apiJson(endpoint, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ english: phrase.english, spanish: phrase.spanish })
+      });
+      await loadSavedPhrasesFromServer();
+      statusText.textContent = successMessage;
+    }
+
+    async function storeCurrentSavedPhrase() {
       const phrase = currentSavedDeckPhrase();
       if (!phrase) return;
 
+      try {
+        await changePhraseState(
+          '/api/saved-phrases/store',
+          phrase,
+          'Phrase stored for later. It is still available in Show All Saved.'
+        );
+      } catch (error) {
+        statusText.textContent = `Store error: ${error.message}`;
+      }
+    }
+
+    async function restoreSavedPhrase(phrase) {
+      try {
+        await changePhraseState(
+          '/api/saved-phrases/restore',
+          phrase,
+          'Phrase restored to the active practice deck.'
+        );
+      } catch (error) {
+        statusText.textContent = `Restore error: ${error.message}`;
+      }
+    }
+
+    async function permanentlyDeletePhrase(phrase) {
       const confirmed = window.confirm(
-        `Delete this saved copy?\n\n${phrase.english}\n${phrase.spanish}`
+        `Permanently delete this saved copy?
+
+${phrase.english}
+${phrase.spanish}`
       );
       if (!confirmed) return;
 
-      const savedCard = {
-        english: phrase.english,
-        spanish: phrase.spanish,
-        category: 'Saved Phrase',
-        source: 'saved'
-      };
+      try {
+        await apiJson('/api/saved-phrases', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ english: phrase.english, spanish: phrase.spanish })
+        });
 
-      savedPhrases.splice(savedDeckIndex, 1);
-      saveJsonToStorage(SAVED_PHRASES_STORAGE_KEY, savedPhrases);
+        const savedCard = {
+          english: phrase.english,
+          spanish: phrase.spanish,
+          category: 'Saved Phrase',
+          source: 'saved'
+        };
+        delete progressMap[getCardKey(savedCard)];
+        saveJsonToStorage(PROGRESS_STORAGE_KEY, progressMap);
 
-      delete progressMap[getCardKey(savedCard)];
-      saveJsonToStorage(PROGRESS_STORAGE_KEY, progressMap);
-
-      if (savedDeckIndex >= savedPhrases.length) {
-        savedDeckIndex = Math.max(0, savedPhrases.length - 1);
+        await loadSavedPhrasesFromServer();
+        statusText.textContent = 'Saved copy permanently deleted. The original main card was not changed.';
+      } catch (error) {
+        statusText.textContent = `Delete error: ${error.message}`;
       }
-
-      savedDeckShowingAnswer = false;
-      updateSavedPhraseCountUI();
-      renderSavedDeckCard();
-
-      if (getCurrentDeckSource() === 'saved') {
-        refreshDeck(false);
-      } else {
-        updateSaveCurrentCardButton();
-      }
-
-      statusText.textContent = 'Saved copy deleted. The original main flashcard was not changed.';
     }
 
     function escapeHtml(value) {
@@ -946,6 +1071,81 @@
         .replaceAll('"', '&quot;')
         .replaceAll("'", '&#039;');
     }
+
+    function renderSavedLibrary() {
+      updateSavedPhraseCountUI();
+
+      let items = savedPhrases;
+      if (savedLibraryFilter === 'active') items = getActiveSavedPhrases();
+      if (savedLibraryFilter === 'stored') items = getStoredSavedPhrases();
+
+      savedLibraryTabs.forEach(button => {
+        button.classList.toggle('active', button.dataset.libraryFilter === savedLibraryFilter);
+      });
+
+      if (!items.length) {
+        savedLibraryList.innerHTML = '<div class="saved-library-empty">Nothing in this section yet.</div>';
+        return;
+      }
+
+      savedLibraryList.innerHTML = items.map((item, idx) => `
+        <article class="saved-library-item">
+          <div class="saved-library-copy">
+            <div class="saved-library-english">${escapeHtml(item.english)}</div>
+            <div class="saved-library-spanish">→ ${escapeHtml(item.spanish)}</div>
+          </div>
+          <div class="saved-library-actions">
+            ${
+              item.stored
+                ? `<button class="restore-btn" type="button" data-action="restore" data-index="${savedPhrases.indexOf(item)}">Restore</button>`
+                : `<button class="store-btn" type="button" data-action="store" data-index="${savedPhrases.indexOf(item)}">Store</button>`
+            }
+            <button class="permanent-delete-btn" type="button" data-action="delete" data-index="${savedPhrases.indexOf(item)}">Delete</button>
+          </div>
+        </article>
+      `).join('');
+    }
+
+    savedLibraryList.addEventListener('click', async event => {
+      const button = event.target.closest('button[data-action]');
+      if (!button) return;
+
+      const phrase = savedPhrases[Number(button.dataset.index)];
+      if (!phrase) return;
+
+      if (button.dataset.action === 'restore') {
+        await restoreSavedPhrase(phrase);
+      } else if (button.dataset.action === 'store') {
+        try {
+          await changePhraseState(
+            '/api/saved-phrases/store',
+            phrase,
+            'Phrase stored for later.'
+          );
+        } catch (error) {
+          statusText.textContent = `Store error: ${error.message}`;
+        }
+      } else if (button.dataset.action === 'delete') {
+        await permanentlyDeletePhrase(phrase);
+      }
+    });
+
+    savedLibraryTabs.forEach(button => {
+      button.addEventListener('click', () => {
+        savedLibraryFilter = button.dataset.libraryFilter;
+        renderSavedLibrary();
+      });
+    });
+
+    toggleSavedLibraryBtn.addEventListener('click', () => {
+      savedLibraryOpen = !savedLibraryOpen;
+      savedDeckView.hidden = savedLibraryOpen;
+      savedLibraryView.hidden = !savedLibraryOpen;
+      toggleSavedLibraryBtn.textContent = savedLibraryOpen
+        ? '🃏 Back to Practice Deck'
+        : '📚 Show All Saved';
+      renderSavedLibrary();
+    });
 
     function getFilteredCards() {
       const selectedCategory = categorySelect.value;
@@ -959,17 +1159,10 @@
         working = working.filter(card => card.category === selectedCategory);
       }
 
-      if (masteredMode === 'hide') {
-        working = working.filter(card => !isMastered(card));
-      }
-
-      if (studyMode === 'due') {
-        working = working.filter(card => isDue(card));
-      } else if (studyMode === 'weak') {
-        working = working.filter(card => isWeak(card));
-      } else if (studyMode === 'new') {
-        working = working.filter(card => isNew(card));
-      }
+      if (masteredMode === 'hide') working = working.filter(card => !isMastered(card));
+      if (studyMode === 'due') working = working.filter(card => isDue(card));
+      else if (studyMode === 'weak') working = working.filter(card => isWeak(card));
+      else if (studyMode === 'new') working = working.filter(card => isNew(card));
 
       if (sortMode === 'random') {
         shuffleArray(working);
@@ -989,11 +1182,9 @@
 
           const aProgress = getProgress(a);
           const bProgress = getProgress(b);
-
           if (aProgress.wrongCount !== bProgress.wrongCount) {
             return bProgress.wrongCount - aProgress.wrongCount;
           }
-
           return aProgress.streak - bProgress.streak;
         });
       }
@@ -1004,7 +1195,6 @@
     function refreshDeck(keepCurrent = true) {
       const current = keepCurrent ? currentCard() : null;
       cards = getFilteredCards();
-
       updateHeaderCountUI(cards.length);
 
       if (!cards.length) {
@@ -1012,7 +1202,7 @@
         showingAnswer = false;
         renderCard();
         statusText.textContent = getCurrentDeckSource() === 'saved'
-          ? 'No saved phrases match the current filters.'
+          ? 'No active saved phrases match the current filters.'
           : 'No cards match the current study filters.';
         return;
       }
@@ -1111,22 +1301,15 @@
       const day = 24 * hour;
 
       if (rating === 'again') return REVIEW_INTERVALS.againMinutes * minute;
-      if (rating === 'hard') {
-        return progress.streak >= 3
-          ? REVIEW_INTERVALS.hardHighStreakDays * day
-          : REVIEW_INTERVALS.hardHours * hour;
-      }
-      if (rating === 'good') {
-        return progress.streak >= 4
-          ? REVIEW_INTERVALS.goodHighStreakDays * day
-          : REVIEW_INTERVALS.goodDays * day;
-      }
-      if (rating === 'easy') {
-        return progress.streak >= 4
-          ? REVIEW_INTERVALS.easyHighStreakDays * day
-          : REVIEW_INTERVALS.easyDays * day;
-      }
-
+      if (rating === 'hard') return progress.streak >= 3
+        ? REVIEW_INTERVALS.hardHighStreakDays * day
+        : REVIEW_INTERVALS.hardHours * hour;
+      if (rating === 'good') return progress.streak >= 4
+        ? REVIEW_INTERVALS.goodHighStreakDays * day
+        : REVIEW_INTERVALS.goodDays * day;
+      if (rating === 'easy') return progress.streak >= 4
+        ? REVIEW_INTERVALS.easyHighStreakDays * day
+        : REVIEW_INTERVALS.easyDays * day;
       return hour;
     }
 
@@ -1150,29 +1333,20 @@
       } else if (rating === 'good') {
         progress.streak += 1;
         progress.goodCount += 1;
-        if (progress.streak >= 5 && progress.wrongCount <= 1) {
-          progress.mastered = true;
-        }
+        if (progress.streak >= 5 && progress.wrongCount <= 1) progress.mastered = true;
       } else if (rating === 'easy') {
         progress.streak += 2;
         progress.easyCount += 1;
-        if (progress.streak >= 4) {
-          progress.mastered = true;
-        }
+        if (progress.streak >= 4) progress.mastered = true;
       }
 
       progress.dueAt = nowMs() + getIntervalMs(rating, progress);
       setProgress(card, progress);
-
       statusText.textContent = `Rated "${rating}". Progress saved on this browser.`;
 
       refreshDeck(true);
-
-      if (cards.length > 1) {
-        nextCard();
-      } else {
-        renderCard();
-      }
+      if (cards.length > 1) nextCard();
+      else renderCard();
     }
 
     async function playAudioFromText(text, speed) {
@@ -1194,7 +1368,6 @@
           URL.revokeObjectURL(audioUrl);
           resolve();
         };
-
         audio.onerror = () => {
           URL.revokeObjectURL(audioUrl);
           reject(new Error('Audio playback failed.'));
@@ -1212,17 +1385,13 @@
       const card = currentCard();
       if (!card) return;
 
-      const text = card.spanish;
-      const speed = speedSelect.value;
-
-      statusText.textContent = speed === 'slow'
+      speakBtn.disabled = true;
+      statusText.textContent = speedSelect.value === 'slow'
         ? 'Generating slow audio...'
         : 'Generating audio...';
 
-      speakBtn.disabled = true;
-
       try {
-        await playAudioFromText(text, speed);
+        await playAudioFromText(card.spanish, speedSelect.value);
         statusText.textContent = 'Playback complete.';
       } catch (error) {
         statusText.textContent = `Voice error: ${error.message}`;
@@ -1246,16 +1415,7 @@
       statusText.textContent = 'Translating English to Spanish...';
 
       try {
-        const translateResponse = await fetch(
-          `/api/translate?text=${encodeURIComponent(englishText)}`
-        );
-
-        if (!translateResponse.ok) {
-          const err = await translateResponse.json();
-          throw new Error(err.detail || 'Translation failed.');
-        }
-
-        const data = await translateResponse.json();
+        const data = await apiJson(`/api/translate?text=${encodeURIComponent(englishText)}`);
         liveSpanishOutput.textContent = data.spanish;
         lastTranslatedEnglish = data.english;
         lastTranslatedSpanish = data.spanish;
@@ -1277,34 +1437,28 @@
       }
     }
 
-    function addPhraseToSavedDeck(english, spanish, successMessage) {
-      if (phraseAlreadySaved(english, spanish)) {
-        statusText.textContent = 'That card is already in Saved Phrases.';
-        updateSaveCurrentCardButton();
+    async function addPhraseToSavedDeck(english, spanish, successMessage) {
+      try {
+        const data = await apiJson('/api/save-phrase', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ english, spanish })
+        });
+
+        await loadSavedPhrasesFromServer();
+        statusText.textContent = data.restored
+          ? 'That phrase was stored, so it was restored to the active deck.'
+          : data.saved
+            ? successMessage
+            : 'That card is already in Saved Phrases.';
+        return data.saved || data.restored;
+      } catch (error) {
+        statusText.textContent = `Save error: ${error.message}`;
         return false;
       }
-
-      savedPhrases.push({
-        english,
-        spanish,
-        createdAt: new Date().toISOString()
-      });
-
-      saveJsonToStorage(SAVED_PHRASES_STORAGE_KEY, savedPhrases);
-      updateSavedPhraseCountUI();
-      renderSavedDeckCard();
-
-      if (getCurrentDeckSource() === 'saved') {
-        refreshDeck(false);
-      } else {
-        updateSaveCurrentCardButton();
-      }
-
-      statusText.textContent = successMessage;
-      return true;
     }
 
-    function savePhraseToBrowser() {
+    async function savePhraseFromLiveTranslate() {
       const english = lastTranslatedEnglish || liveEnglishInput.value.trim();
       const spanish = lastTranslatedSpanish || liveSpanishOutput.textContent.trim();
 
@@ -1319,14 +1473,14 @@
         return;
       }
 
-      addPhraseToSavedDeck(
+      await addPhraseToSavedDeck(
         english,
         spanish,
         'Translated phrase added to Saved Phrases.'
       );
     }
 
-    function saveCurrentMainCard() {
+    async function saveCurrentMainCard() {
       const card = currentCard();
 
       if (!card) {
@@ -1339,7 +1493,7 @@
         return;
       }
 
-      addPhraseToSavedDeck(
+      await addPhraseToSavedDeck(
         card.english,
         card.spanish,
         'Card added to Saved Phrases.'
@@ -1347,8 +1501,6 @@
     }
 
     function updateSaveCurrentCardButton() {
-      if (!saveCurrentCardBtn) return;
-
       const card = currentCard();
 
       if (!card) {
@@ -1363,11 +1515,9 @@
         return;
       }
 
-      const alreadySaved = phraseAlreadySaved(card.english, card.spanish);
-      saveCurrentCardBtn.disabled = alreadySaved;
-      saveCurrentCardBtn.textContent = alreadySaved
-        ? '✓ Already Saved'
-        : '⭐ Save Card';
+      const exists = phraseAlreadySaved(card.english, card.spanish);
+      saveCurrentCardBtn.disabled = exists;
+      saveCurrentCardBtn.textContent = exists ? '✓ Already Saved' : '⭐ Save Card';
     }
 
     function resetProgress() {
@@ -1380,29 +1530,11 @@
       statusText.textContent = 'Spaced repetition progress reset.';
     }
 
-    function switchToSavedMode() {
-      deckSourceSelect.value = 'saved';
-      categorySelect.value = 'All';
-      handleDeckSourceChange();
-      showTab('flashcardsPanel');
-      statusText.textContent = 'Viewing saved phrases as flashcards.';
-    }
-
-    function switchToMainMode() {
-      deckSourceSelect.value = 'main';
-      handleDeckSourceChange();
-      showTab('flashcardsPanel');
-      statusText.textContent = 'Viewing main flashcards.';
-    }
-
     function handleDeckSourceChange() {
-      const isSaved = getCurrentDeckSource() === 'saved';
-      categorySelect.disabled = isSaved;
-
+      categorySelect.disabled = getCurrentDeckSource() === 'saved';
       refreshDeck(false);
-
-      statusText.textContent = isSaved
-        ? 'Saved phrases mode active.'
+      statusText.textContent = getCurrentDeckSource() === 'saved'
+        ? 'Active saved phrases mode.'
         : 'Main flashcards mode active.';
     }
 
@@ -1455,14 +1587,9 @@
       }
 
       const speed = speedOverride || shadowSpeedSelect.value;
-
       startShadowBtn.disabled = true;
       replayShadowBtn.disabled = true;
       replayShadowSlowBtn.disabled = true;
-
-      statusText.textContent = speed === 'slow'
-        ? 'Shadow mode: playing slower audio...'
-        : 'Shadow mode: playing audio...';
 
       try {
         await playAudioFromText(shadowCurrentItem.spanish, speed);
@@ -1477,15 +1604,12 @@
     }
 
     async function startShadowMode() {
-      const ok = buildShadowQueue();
-
-      if (!ok) {
+      if (!buildShadowQueue()) {
         statusText.textContent = shadowSourceSelect.value === 'saved'
-          ? 'No saved phrases available for shadow mode.'
+          ? 'No active saved phrases available for shadow mode.'
           : 'No flashcards available for shadow mode.';
         return;
       }
-
       await playShadowCurrent();
     }
 
@@ -1510,7 +1634,6 @@
         statusText.textContent = 'Start shadow mode first.';
         return;
       }
-
       shadowTextRevealed = true;
       renderShadowCard();
       statusText.textContent = 'Shadow text revealed.';
@@ -1518,8 +1641,7 @@
 
     async function nextShadowItem() {
       if (!shadowQueue.length) {
-        const ok = buildShadowQueue();
-        if (!ok) {
+        if (!buildShadowQueue()) {
           statusText.textContent = 'Nothing available for shadow mode.';
           return;
         }
@@ -1529,14 +1651,13 @@
         shadowTextRevealed = shadowTextModeSelect.value === 'shown';
         renderShadowCard();
       }
-
       await playShadowCurrent();
     }
 
-    document.getElementById('nextBtn').addEventListener('click', nextCard);
-    document.getElementById('prevBtn').addEventListener('click', prevCard);
-    document.getElementById('flipBtn').addEventListener('click', flipCard);
-    document.getElementById('shuffleBtn').addEventListener('click', shuffleCards);
+    byId('nextBtn').addEventListener('click', nextCard);
+    byId('prevBtn').addEventListener('click', prevCard);
+    byId('flipBtn').addEventListener('click', flipCard);
+    byId('shuffleBtn').addEventListener('click', shuffleCards);
 
     againBtn.addEventListener('click', () => rateCard('again'));
     hardBtn.addEventListener('click', () => rateCard('hard'));
@@ -1544,15 +1665,18 @@
     easyBtn.addEventListener('click', () => rateCard('easy'));
 
     resetProgressBtn.addEventListener('click', resetProgress);
-    savePhraseBtn.addEventListener('click', savePhraseToBrowser);
-
+    savePhraseBtn.addEventListener('click', savePhraseFromLiveTranslate);
     saveCurrentCardBtn.addEventListener('click', saveCurrentMainCard);
 
     savedDeckPrevBtn.addEventListener('click', prevSavedDeckCard);
     savedDeckFlipBtn.addEventListener('click', flipSavedDeckCard);
     savedDeckNextBtn.addEventListener('click', nextSavedDeckCard);
     savedDeckSpeakBtn.addEventListener('click', speakSavedDeckCard);
-    deleteSavedDeckBtn.addEventListener('click', deleteSavedDeckPhrase);
+    storeSavedDeckBtn.addEventListener('click', storeCurrentSavedPhrase);
+    deleteSavedDeckBtn.addEventListener('click', async () => {
+      const phrase = currentSavedDeckPhrase();
+      if (phrase) await permanentlyDeletePhrase(phrase);
+    });
 
     startShadowBtn.addEventListener('click', startShadowMode);
     replayShadowBtn.addEventListener('click', replayShadow);
@@ -1572,65 +1696,45 @@
         renderShadowCard();
         return;
       }
-
       shadowTextRevealed = shadowTextModeSelect.value === 'shown';
       renderShadowCard();
     });
 
-    if (speakBtn) {
-      speakBtn.addEventListener('click', speakCard);
-    }
-
-    if (translateSpeakBtn) {
-      translateSpeakBtn.addEventListener('click', translateAndSpeakLive);
-    }
-
+    speakBtn.addEventListener('click', speakCard);
+    translateSpeakBtn.addEventListener('click', translateAndSpeakLive);
     deckSourceSelect.addEventListener('change', handleDeckSourceChange);
-
     categorySelect.addEventListener('change', () => refreshDeck(false));
-
     promptSideSelect.addEventListener('change', () => {
       showingAnswer = false;
       renderCard();
     });
-
     studyModeSelect.addEventListener('change', () => refreshDeck(false));
     masteredModeSelect.addEventListener('change', () => refreshDeck(false));
     sortModeSelect.addEventListener('change', () => refreshDeck(false));
 
-    document.addEventListener('keydown', (event) => {
+    document.addEventListener('keydown', event => {
       const activeTag = document.activeElement?.tagName;
-
-      if (activeTag === 'INPUT' || activeTag === 'TEXTAREA' || activeTag === 'SELECT') {
-        return;
-      }
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(activeTag)) return;
 
       if (event.key === 'ArrowRight') nextCard();
       else if (event.key === 'ArrowLeft') prevCard();
       else if (event.code === 'Space') {
         event.preventDefault();
         flipCard();
-      } else if (event.key === '1') {
-        rateCard('again');
-      } else if (event.key === '2') {
-        rateCard('hard');
-      } else if (event.key === '3') {
-        rateCard('good');
-      } else if (event.key === '4') {
-        rateCard('easy');
-      } else if (event.key.toLowerCase() === 's') {
-        replayShadow();
-      } else if (event.key.toLowerCase() === 'r') {
-        revealShadowText();
-      }
+      } else if (event.key === '1') rateCard('again');
+      else if (event.key === '2') rateCard('hard');
+      else if (event.key === '3') rateCard('good');
+      else if (event.key === '4') rateCard('easy');
+      else if (event.key.toLowerCase() === 's') replayShadow();
+      else if (event.key.toLowerCase() === 'r') revealShadowText();
     });
 
     setCompactMode(localStorage.getItem(COMPACT_MODE_STORAGE_KEY) === 'on', false);
-    updateSavedPhraseCountUI();
-    renderSavedDeckCard();
-    handleDeckSourceChange();
     renderShadowCard();
     showTab('flashcardsPanel');
+    migrateLegacyBrowserSavedPhrases()
+      .then(() => loadSavedPhrasesFromServer())
+      .then(() => handleDeckSourceChange());
   </script>
 </body>
 </html>
