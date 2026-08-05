@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Spanish Flashcards Web</title>
-  <link rel="stylesheet" href="/static/style.css?v=saved-library-2">
+  <link rel="stylesheet" href="/static/style.css?v=saved-library-browser-backup-3">
 
   <style>
     .tab-panel {
@@ -542,6 +542,7 @@
     const PROGRESS_STORAGE_KEY = 'spanish_flashcards_progress_v1';
     const LEGACY_SAVED_PHRASES_STORAGE_KEY = 'spanish_saved_phrases_v1';
     const LEGACY_MIGRATION_KEY = 'spanish_saved_phrases_server_migrated_v1';
+    const SAVED_PHRASES_BACKUP_KEY = 'spanish_saved_phrases_backup_v2';
     const COMPACT_MODE_STORAGE_KEY = 'spanish_compact_mode_v1';
     const SAVED_DECK_INDEX_STORAGE_KEY = 'spanish_saved_deck_index_v2';
 
@@ -764,10 +765,64 @@
       localStorage.setItem(LEGACY_MIGRATION_KEY, 'done');
     }
 
+    function loadSavedPhrasesBackup() {
+      const primaryBackup = loadJsonFromStorage(SAVED_PHRASES_BACKUP_KEY, null);
+
+      if (Array.isArray(primaryBackup)) {
+        return primaryBackup;
+      }
+
+      const legacyBackup = loadJsonFromStorage(LEGACY_SAVED_PHRASES_STORAGE_KEY, []);
+      return Array.isArray(legacyBackup) ? legacyBackup : [];
+    }
+
+    function saveSavedPhrasesBackup() {
+      saveJsonToStorage(SAVED_PHRASES_BACKUP_KEY, savedPhrases);
+    }
+
+    async function restoreSavedPhrasesBackupToServer(backupPhrases) {
+      for (const phrase of backupPhrases) {
+        const english = String(phrase?.english || '').trim();
+        const spanish = String(phrase?.spanish || '').trim();
+
+        if (!english || !spanish) continue;
+
+        await apiJson('/api/save-phrase', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ english, spanish })
+        });
+
+        if (Boolean(phrase?.stored)) {
+          await apiJson('/api/saved-phrases/store', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ english, spanish })
+          });
+        }
+      }
+    }
+
     async function loadSavedPhrasesFromServer() {
       try {
-        const data = await apiJson('/api/saved-phrases');
-        savedPhrases = Array.isArray(data.phrases) ? data.phrases : [];
+        let data = await apiJson('/api/saved-phrases');
+        let serverPhrases = Array.isArray(data.phrases) ? data.phrases : [];
+        const browserBackup = loadSavedPhrasesBackup();
+
+        if (!serverPhrases.length && browserBackup.length) {
+          statusText.textContent = 'Render storage reset detected. Restoring saved phrases from this browser...';
+
+          await restoreSavedPhrasesBackupToServer(browserBackup);
+
+          data = await apiJson('/api/saved-phrases');
+          serverPhrases = Array.isArray(data.phrases) ? data.phrases : [];
+
+          statusText.textContent = `Restored ${serverPhrases.length} saved phrase${serverPhrases.length === 1 ? '' : 's'} from this browser.`;
+        }
+
+        savedPhrases = serverPhrases;
+        saveSavedPhrasesBackup();
+
         normalizeSavedDeckIndex();
         updateSavedPhraseCountUI();
         renderSavedDeckCard();
@@ -779,6 +834,19 @@
           updateSaveCurrentCardButton();
         }
       } catch (error) {
+        const browserBackup = loadSavedPhrasesBackup();
+
+        if (browserBackup.length) {
+          savedPhrases = browserBackup;
+          normalizeSavedDeckIndex();
+          updateSavedPhraseCountUI();
+          renderSavedDeckCard();
+          renderSavedLibrary();
+          updateSaveCurrentCardButton();
+          statusText.textContent = `Server unavailable. Showing ${browserBackup.length} phrase${browserBackup.length === 1 ? '' : 's'} from this browser backup.`;
+          return;
+        }
+
         statusText.textContent = `Saved phrases error: ${error.message}`;
       }
     }
